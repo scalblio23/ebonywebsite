@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thank You – Ebony Fortunatow</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="nav scrolled">
+    <div class="nav-logo"><a href="index.html">EBONY FORTUNATOW</a></div>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="workshops.html">Workshops</a>
+      <a href="about.html">About</a>
+      <!-- TEMP: remove before going live -->
+      <a href="thankyou.html" class="active">Thank You</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section class="ws-hero" style="background-image: url('FullSizeRender_VSCO%208.JPG')">
+    <div class="hero-overlay"></div>
+    <div class="ws-hero-text">
+      <p class="ws-hero-label">BOOKING CONFIRMED</p>
+      <h1 id="thankyou-class">Your Workshop</h1>
+    </div>
+  </section>
+
+  <!-- THANK YOU CONTENT -->
+  <section class="thankyou-section">
+    <div class="thankyou-inner">
+      <h2>Thank you for booking!</h2>
+      <p>We're so excited to have you in the studio. Your spot in <strong id="thankyou-class-inline">your workshop</strong> has been confirmed.</p>
+      <p>You'll receive a confirmation email shortly with all the details you need. If you have any questions in the meantime, get in touch at <a href="mailto:ebonyfortunatow@gmail.com">ebonyfortunatow@gmail.com</a>.</p>
+
+      <div class="thankyou-details">
+        <div>
+          <span>Location</span>
+          <p>2 Ann St, Stepney SA 5069</p>
+        </div>
+        <div>
+          <span>What to wear</span>
+          <p>Something you don't mind getting a little messy</p>
+        </div>
+        <div>
+          <span>Firing</span>
+          <p>Your pieces will be fired and ready to collect in 5–6 weeks</p>
+        </div>
+        <div>
+          <span>Questions</span>
+          <p>ebonyfortunatow@gmail.com</p>
+        </div>
+      </div>
+
+      <a href="workshops.html" class="btn-outline" style="margin-top: 40px; display: inline-block;">Browse Other Workshops</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-top">
+      <p class="footer-copy">ALL RIGHTS RESERVED &mdash; EBONY FORTUNATOW</p>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-links">
+        <a href="#">Legal &amp; Compliance</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Refund Policy</a>
+        <a href="#">Privacy Policy</a>
+      </div>
+      <div class="footer-contact">
+        <p>Studio: 2 Ann St, Stepney, SA 5069</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+  <script>
+    // Read ?class= from URL and populate page
+    const params = new URLSearchParams(window.location.search);
+    const className = params.get('class');
+    if (className) {
+      document.getElementById('thankyou-class').textContent = className;
+      document.getElementById('thankyou-class-inline').textContent = className;
+      document.title = 'Thank You – ' + className + ' – Ebony Fortunatow';
+    }
+  </script>
+</body>
+</html>
