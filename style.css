@@ -502,7 +502,7 @@ a { text-decoration: none; color: inherit; }
 }
 
 .workshop-image {
-  height: 280px;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: var(--cream);
 }
