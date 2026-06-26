@@ -800,6 +800,36 @@ a { text-decoration: none; color: inherit; }
   font-weight: 400;
 }
 
+.ws-dates {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.ws-date-block {
+  background: var(--cream);
+  padding: 20px 24px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.ws-date-block span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brown-light);
+  margin-bottom: 8px;
+}
+
+.ws-date-block p {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.7;
+  margin: 0;
+}
+
 .cal-selected-label {
   font-size: 12px;
   color: var(--text-light);
