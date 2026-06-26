@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6 Week Course – Ebony Fortunatow</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="nav scrolled">
+    <div class="nav-logo"><a href="index.html">EBONY FORTUNATOW</a></div>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="workshops.html" class="active">Workshops</a>
+      <a href="about.html">About</a>
+    </nav>
+  </header>
+
+  <section class="ws-hero" style="background-image: url('assets/workshop3.jpg')">
+    <div class="hero-overlay"></div>
+    <div class="ws-hero-text">
+      <p class="ws-hero-label">COURSE</p>
+      <h1>6 Week Course</h1>
+      <p class="ws-hero-meta">2.5 hours per week &nbsp;·&nbsp; Max 8 people &nbsp;·&nbsp; All levels &nbsp;·&nbsp; $550 per person</p>
+    </div>
+  </section>
+
+  <section class="ws-about">
+    <div class="ws-about-inner">
+      <div class="ws-about-text">
+        <h2>About This Course</h2>
+        <p>A six-week journey into hand-building ceramics, designed for those who want to develop a genuine practice rather than a one-off experience. Each week builds on the last — from foundational pinch and coil techniques through to slab construction, surface treatment and glaze.</p>
+        <p>Kept to a maximum of eight participants, this course allows for real progress, meaningful feedback and a growing confidence with the material. By the end you'll have a body of work and the skills to keep going.</p>
+
+        <h2>What to Expect</h2>
+        <ul class="ws-list">
+          <li>Week 1 — Introduction to clay: pinch and coil fundamentals</li>
+          <li>Week 2 — Form and function: building vessels with intention</li>
+          <li>Week 3 — Slab construction: plates, bowls and flat work</li>
+          <li>Week 4 — Surface and texture: carving, stamping, slip decoration</li>
+          <li>Week 5 — Glaze theory and application</li>
+          <li>Week 6 — Final firing, collection and review of your body of work</li>
+          <li>All materials and firings included across the 6 weeks</li>
+        </ul>
+
+        <h2>Details</h2>
+        <div class="ws-details-grid">
+          <div><span>Duration</span><p>2.5 hrs × 6 weeks</p></div>
+          <div><span>Max Group Size</span><p>8 people</p></div>
+          <div><span>Level</span><p>All levels welcome</p></div>
+          <div><span>Price</span><p>$550 per person</p></div>
+          <div><span>Location</span><p>2 Ann St, Stepney SA</p></div>
+          <div><span>Firing</span><p>All firings included</p></div>
+        </div>
+      </div>
+
+      <div class="ws-carousel-wrap">
+        <div class="carousel">
+          <div class="carousel-track" id="carousel-track">
+            <div class="carousel-slide"><img src="assets/29964efa-7136-4551-91ef-fb4f7cb42858.jpg" alt="Workshop" /></div>
+            <div class="carousel-slide"><img src="assets/7ac13566-2af2-45b7-8edc-64ebdb6d20f6.jpg" alt="Workshop" /></div>
+            <div class="carousel-slide"><img src="assets/_DK15088.jpg" alt="Workshop" /></div>
+          </div>
+          <button class="carousel-btn prev" onclick="moveCarousel(-1)">&#8249;</button>
+          <button class="carousel-btn next" onclick="moveCarousel(1)">&#8250;</button>
+          <div class="carousel-dots" id="carousel-dots"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ws-booking">
+    <div class="ws-booking-inner">
+      <div class="ws-booking-text">
+        <h2>Enrol in the Next Intake</h2>
+        <p>Select a course start date below and get in touch to secure your place. Enrolments close one week before each intake begins.</p>
+        <p class="ws-booking-note">Once you've selected a date, email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> or use the button below.</p>
+        <a href="mailto:studio@ebonyfortunatow.com?subject=Enrolment - 6 Week Course" class="btn-solid" id="book-btn">Select a date first</a>
+      </div>
+      <div class="ws-calendar" id="calendar"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <p class="footer-copy">ALL RIGHTS RESERVED &mdash; EBONY FORTUNATOW</p>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-links">
+        <a href="#">Legal &amp; Compliance</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Refund Policy</a>
+        <a href="#">Privacy Policy</a>
+      </div>
+      <div class="footer-contact">
+        <p>Studio: 2 Ann St, Stepney, SA 5069</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+  <script src="calendar.js"></script>
+  <script>initCalendar('calendar', 'book-btn', '6 Week Course');</script>
+</body>
+</html>
