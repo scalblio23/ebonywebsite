@@ -11,14 +11,14 @@
   --brown-light: #9a7a5a;
   --text: #3a3530;
   --text-light: #6b6059;
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
-  --font-sans: 'Jost', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Roboto', sans-serif;
+  --font-sans: 'Roboto', sans-serif;
 }
 
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: var(--font-sans);
+  font-family: 'Roboto', sans-serif;
   font-weight: 300;
   color: var(--text);
   background: var(--cream);
