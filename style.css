@@ -291,7 +291,7 @@ a { text-decoration: none; color: inherit; }
 
 .about-text h2 {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 400;
   letter-spacing: 0.18em;
   color: var(--brown);
@@ -299,8 +299,8 @@ a { text-decoration: none; color: inherit; }
 }
 
 .about-text p {
-  font-size: 13px;
-  line-height: 1.75;
+  font-size: 15.5px;
+  line-height: 1.8;
   color: var(--text);
 }
 
@@ -378,8 +378,8 @@ a { text-decoration: none; color: inherit; }
 
 .location-image {
   width: 100%;
-  max-width: 380px;
-  height: 240px;
+  max-width: 620px;
+  height: 400px;
   overflow: hidden;
   border-radius: 2px;
 }
