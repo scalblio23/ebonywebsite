@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ebony Fortunatow</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <header class="nav">
+    <div class="nav-logo">EBONY FORTUNATOW</div>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="workshops.html">Workshops</a>
+      <a href="about.html">About</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-video">
+      <video autoplay muted loop playsinline id="hero-vid">
+        <source src="assets/hero.mp4" type="video/mp4" />
+      </video>
+      <button class="sound-btn" onclick="toggleSound()">&#128263; Enable sound</button>
+    </div>
+    <div class="hero-text">
+      <p class="hero-label">WORKSHOPS</p>
+      <p class="hero-label">NOW OPEN</p>
+      <a href="workshops.html" class="btn-outline">BOOK YOUR SPOT</a>
+    </div>
+  </section>
+
+  <!-- SHOP / GALLERY SPLIT -->
+  <section class="split">
+    <div class="split-left">
+      <p class="split-label">SHOP COMING SOON</p>
+    </div>
+    <div class="split-right">
+      <div class="carousel">
+        <div class="carousel-track" id="carousel-track">
+          <div class="carousel-slide"><img src="assets/gallery1.jpg" alt="Studio ceramics" /></div>
+          <div class="carousel-slide"><img src="assets/gallery2.jpg" alt="Ceramic objects" /></div>
+          <div class="carousel-slide"><img src="assets/gallery3.jpg" alt="Studio shelves" /></div>
+          <div class="carousel-slide"><img src="assets/gallery4.jpg" alt="Handmade pieces" /></div>
+          <div class="carousel-slide"><img src="assets/gallery5.jpg" alt="Ceramic work" /></div>
+        </div>
+        <button class="carousel-btn prev" onclick="moveCarousel(-1)">&#8249;</button>
+        <button class="carousel-btn next" onclick="moveCarousel(1)">&#8250;</button>
+        <div class="carousel-dots" id="carousel-dots"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about">
+    <div class="about-text">
+      <h2>ABOUT ME</h2>
+      <p>Ebony Fortunatow (née Heidenreich) is an Adelaide-based ceramic artist whose work reflects a deep appreciation for materiality, texture and the quiet presence of handmade objects.</p>
+      <p>Trained at Jam Factory, her work has been collected by the National Gallery of Victoria, the Shepparton Art Museum, and exhibited nationally.</p>
+      <p>Working from her studio in Stepney Norwood, Ebony draws inspiration from architecture, natural materials and the forms and colours found in nature. She creates objects with the spaces we inhabit in mind.</p>
+      <p>Honouring the value of well-made products and the beauty of thoughtful design, she explores how form and material can shape how we experience a space, offering work that feels grounded, refined and quietly expressive.</p>
+    </div>
+    <div class="about-image">
+      <img src="assets/ebony.jpg" alt="Ebony Fortunatow" />
+    </div>
+  </section>
+
+  <!-- LOCATION -->
+  <section class="location">
+    <p class="location-label">&#128205; Location: 2 Ann St, Stepney, Adelaide SA</p>
+    <div class="location-image">
+      <img src="assets/studio-building.jpg" alt="Studio at Otto & Co" />
+    </div>
+    <div class="social-links">
+      <a href="mailto:studio@ebonyfortunatow.com" aria-label="Email">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+      </a>
+      <a href="https://instagram.com" target="_blank" aria-label="Instagram">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
+      </a>
+      <a href="https://facebook.com" target="_blank" aria-label="Facebook">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-top">
+      <p class="footer-copy">ALL RIGHTS RESERVED &mdash; EBONY FORTUNATOW</p>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-links">
+        <a href="#">Legal &amp; Compliance</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Refund Policy</a>
+        <a href="#">Privacy Policy</a>
+      </div>
+      <div class="footer-contact">
+        <p>Studio: 2 Ann St, Stepney, SA 5069</p>
+        <p>Office: Melbourne Ave, Fulton St, Adelaide</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
