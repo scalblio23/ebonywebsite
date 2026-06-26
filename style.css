@@ -897,27 +897,65 @@ a { text-decoration: none; color: inherit; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .nav { padding: 0 20px; }
+  /* NAV */
+  .nav {
+    padding: 0 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    gap: 12px;
+  }
+  .nav-links { gap: 20px; }
 
-  .hero { height: 70vh; padding: 40px 24px; }
+  /* HERO */
+  .hero { height: 70vh; padding: 40px 24px; margin-top: 0; }
   .hero-text { align-items: center; }
   .hero-label { text-align: center; }
 
+  /* SPLIT / SHOP */
   .split { grid-template-columns: 1fr; height: auto; }
   .split-left { padding: 50px 30px; }
   .split-right { height: 60vw; min-height: 280px; }
 
-  .about { grid-template-columns: 1fr; }
-  .about-text { padding: 50px 30px; }
-  .about-image { height: 70vw; }
+  /* ABOUT */
+  .about {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .about-text { padding: 48px 24px 32px; }
+  .about-image {
+    height: 80vw;
+    padding: 0 24px 48px;
+    background: var(--white);
+  }
+  .about-image img { object-fit: contain; }
 
+  /* LOCATION */
+  .location { padding: 48px 24px; }
+  .location-image { height: 240px; }
+
+  /* ACCOLADES */
   .accolades { grid-template-columns: 1fr; padding: 40px 30px; }
 
+  /* FOOTER */
   .footer { padding: 32px 24px; }
-  .footer-bottom { flex-direction: column; }
+  .footer-bottom { flex-direction: column; gap: 16px; }
 
+  /* PAGE HEADER */
   .page-header { padding: 100px 24px 40px; }
 
-  .workshops-row { flex-direction: column; }
+  /* WORKSHOPS LISTING */
+  .workshops-hero { grid-template-columns: 1fr; height: auto; }
+  .workshops-hero-image { height: 60vw; }
+  .workshops-grid { padding: 40px 20px; gap: 20px; }
+  .workshops-row { flex-direction: column; gap: 20px; }
   .workshops-row--centred .workshop-card { flex: 1; }
+
+  /* WORKSHOP DETAIL PAGES */
+  .ws-about-inner { grid-template-columns: 1fr; }
+  .ws-carousel-wrap { height: 60vw; min-height: 280px; }
+  .ws-booking-inner { grid-template-columns: 1fr; }
+  .ws-details-grid { grid-template-columns: 1fr 1fr; }
 }
