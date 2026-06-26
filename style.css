@@ -474,17 +474,32 @@ a { text-decoration: none; color: inherit; }
 
 /* ===== WORKSHOPS GRID ===== */
 .workshops-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1px;
+  padding-top: 80px;
   background: rgba(122,92,62,0.1);
   border-top: 1px solid rgba(122,92,62,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.workshops-row {
+  display: flex;
+  gap: 1px;
+}
+
+.workshops-row--centred {
+  justify-content: center;
+}
+
+.workshops-row--centred .workshop-card {
+  flex: 0 0 calc(33.333% - 1px);
 }
 
 .workshop-card {
   background: var(--cream-light);
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .workshop-image {
@@ -904,5 +919,6 @@ a { text-decoration: none; color: inherit; }
 
   .page-header { padding: 100px 24px 40px; }
 
-  .workshops-grid { grid-template-columns: 1fr; }
+  .workshops-row { flex-direction: column; }
+  .workshops-row--centred .workshop-card { flex: 1; }
 }
