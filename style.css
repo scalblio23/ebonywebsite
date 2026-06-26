@@ -966,6 +966,10 @@ a { text-decoration: none; color: inherit; }
   /* WORKSHOP DETAIL PAGES */
   .ws-about-inner { grid-template-columns: 1fr; }
   .ws-carousel-wrap { height: 60vw; min-height: 280px; }
-  .ws-booking-inner { grid-template-columns: 1fr; }
+  .ws-booking { padding: 40px 0; }
+  .ws-booking-inner { grid-template-columns: 1fr; gap: 24px; }
+  .ws-booking-text { padding: 0 24px; }
+  .ws-calendar { padding: 0; background: none; }
+  .ws-calendar iframe { display: block; width: 100% !important; }
   .ws-details-grid { grid-template-columns: 1fr 1fr; }
 }
