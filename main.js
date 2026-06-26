@@ -1,3 +1,14 @@
+// Nav scroll behaviour
+(function () {
+  const nav = document.querySelector('.nav');
+  if (!nav) return;
+  function update() {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+})();
+
 // Sound toggle
 function toggleSound() {
   const vid = document.getElementById('hero-vid');

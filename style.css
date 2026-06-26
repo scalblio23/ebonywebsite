@@ -39,6 +39,12 @@ a { text-decoration: none; color: inherit; }
   justify-content: space-between;
   padding: 0 48px;
   height: 60px;
+  background: transparent;
+  border-bottom: none;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.nav.scrolled {
   background: var(--cream);
   border-bottom: 1px solid rgba(122,92,62,0.12);
 }
@@ -48,8 +54,11 @@ a { text-decoration: none; color: inherit; }
   font-weight: 400;
   font-size: 12px;
   letter-spacing: 0.2em;
-  color: var(--charcoal);
+  color: var(--white);
+  transition: color 0.3s;
 }
+
+.nav.scrolled .nav-logo { color: var(--charcoal); }
 
 .nav-logo a { color: inherit; }
 
@@ -63,12 +72,17 @@ a { text-decoration: none; color: inherit; }
   font-weight: 300;
   font-size: 13px;
   letter-spacing: 0.1em;
-  color: var(--text);
+  color: var(--white);
   transition: color 0.2s;
 }
 
+.nav.scrolled .nav-links a { color: var(--text); }
+
 .nav-links a:hover,
-.nav-links a.active { color: var(--brown); }
+.nav-links a.active { color: rgba(255,255,255,0.65); }
+
+.nav.scrolled .nav-links a:hover,
+.nav.scrolled .nav-links a.active { color: var(--brown); }
 
 /* ===== BUTTONS ===== */
 .btn-outline {
@@ -117,6 +131,7 @@ a { text-decoration: none; color: inherit; }
   align-items: flex-end;
   justify-content: flex-end;
   padding: 60px 80px;
+  margin-top: -60px;
 }
 
 .hero-overlay {
