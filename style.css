@@ -308,7 +308,7 @@ a { text-decoration: none; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--cream-light);
+  background: var(--white);
   overflow: hidden;
   padding: 24px;
 }
