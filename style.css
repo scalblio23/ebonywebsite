@@ -474,17 +474,16 @@ a { text-decoration: none; color: inherit; }
 
 /* ===== WORKSHOPS GRID ===== */
 .workshops-grid {
-  padding-top: 80px;
-  background: rgba(122,92,62,0.1);
-  border-top: 1px solid rgba(122,92,62,0.1);
+  padding: 80px 48px 80px;
+  background: var(--cream);
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 32px;
 }
 
 .workshops-row {
   display: flex;
-  gap: 1px;
+  gap: 32px;
 }
 
 .workshops-row--centred {
