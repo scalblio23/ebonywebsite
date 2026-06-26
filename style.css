@@ -780,6 +780,16 @@ a { text-decoration: none; color: inherit; }
 
 .ws-booking-text .btn-solid { margin-top: 20px; }
 
+.ws-terms-title {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--charcoal);
+  margin-top: 20px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
 /* Calendar */
 .ws-calendar {
   background: var(--white);
