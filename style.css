@@ -56,9 +56,10 @@ a { text-decoration: none; color: inherit; }
   letter-spacing: 0.2em;
   color: var(--white);
   transition: color 0.3s;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 
-.nav.scrolled .nav-logo { color: var(--charcoal); }
+.nav.scrolled .nav-logo { color: var(--charcoal); text-shadow: none; }
 
 .nav-logo a { color: inherit; }
 
@@ -74,9 +75,10 @@ a { text-decoration: none; color: inherit; }
   letter-spacing: 0.1em;
   color: var(--white);
   transition: color 0.2s;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 
-.nav.scrolled .nav-links a { color: var(--text); }
+.nav.scrolled .nav-links a { color: var(--text); text-shadow: none; }
 
 .nav-links a:hover,
 .nav-links a.active { color: rgba(255,255,255,0.65); }
@@ -137,7 +139,7 @@ a { text-decoration: none; color: inherit; }
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.3) 100%);
+  background: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.3) 100%);
 }
 
 .hero-text {
