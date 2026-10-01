@@ -1,0 +1,3 @@
+# Local-only tooling; not needed in the deployed site.
+scripts/
+.env.example
