@@ -81,7 +81,7 @@ function initCalendar(calendarId, btnId, workshopName, fixedDates) {
       cell.addEventListener('click', () => {
         selected = cell.dataset.date;
         const subject = encodeURIComponent(`Booking – ${workshopName} – ${selected}`);
-        btn.href = `mailto:studio@ebonyfortunatow.com?subject=${subject}`;
+        btn.href = `mailto:ebonyfortunatow@gmail.com?subject=${subject}`;
         btn.textContent = `Book ${selected}`;
         render();
       });
