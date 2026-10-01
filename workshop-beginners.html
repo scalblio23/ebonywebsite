@@ -80,16 +80,15 @@
     </div>
   </section>
 
-  <!-- BOOKING CALENDAR -->
-  <section class="ws-booking">
+  <!-- BOOKING -->
+  <section class="ws-booking" id="book">
     <div class="ws-booking-inner">
       <div class="ws-booking-text">
         <h2>Book Your Spot</h2>
-        <p>Select an available date below and get in touch to reserve your place. Spots fill quickly.</p>
-        <p class="ws-booking-note">Once you've selected a date, email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> or use the button below.</p>
-        <a href="mailto:studio@ebonyfortunatow.com?subject=Booking - Beginners Hand-building" class="btn-solid" id="book-btn">Select a date first</a>
+        <p>Pick a date, choose a session time and add your details to reserve your place. Spots fill quickly.</p>
+        <p class="ws-booking-note">You'll get a confirmation email as soon as you book. Questions? Email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a>.</p>
       </div>
-      <div class="ws-calendar" id="calendar"></div>
+      <div class="ws-calendar bk" id="booking"></div>
     </div>
   </section>
 
@@ -111,7 +110,14 @@
   </footer>
 
   <script src="main.js"></script>
-  <script src="calendar.js"></script>
-  <script>initCalendar('calendar', 'book-btn', 'Beginners Hand-building');</script>
+  <script src="booking.js"></script>
+  <script>
+    initBooking({
+      containerId: 'booking',
+      workshop: 'Beginners Hand-building',
+      price: 98,
+      times: ['10:00am – 12:00pm', '1:00pm – 3:00pm', '4:00pm – 6:00pm'],
+    });
+  </script>
 </body>
 </html>
