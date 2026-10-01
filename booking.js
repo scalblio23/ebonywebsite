@@ -113,7 +113,7 @@ function initBooking(opts) {
     }
     html += `</div><p class="bk-legend"><span class="bk-dot"></span> Available</p>`;
     if (!sessions.size) {
-      html += `<p class="bk-sub bk-empty">No dates are open for booking right now. Email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> to register your interest.</p>`;
+      html += `<p class="bk-sub bk-empty">No dates are open for booking right now. Email <a href="mailto:ebonyfortunatow@gmail.com">ebonyfortunatow@gmail.com</a> to register your interest.</p>`;
     }
     return html;
   }
@@ -175,7 +175,7 @@ function initBooking(opts) {
   function renderLoading() {
     return state.loadError
       ? `<p class="bk-error" role="alert">${esc(state.loadError)}</p>
-         <p class="bk-sub">Please email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> to book.</p>`
+         <p class="bk-sub">Please email <a href="mailto:ebonyfortunatow@gmail.com">ebonyfortunatow@gmail.com</a> to book.</p>`
       : `<p class="bk-sub">Loading available dates…</p>`;
   }
 

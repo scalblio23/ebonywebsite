@@ -6,7 +6,7 @@
 //   RESEND_API_KEY      (required) Resend API key
 //   BOOKING_FROM_EMAIL  (optional) verified sender, e.g. "Ebony Fortunatow <bookings@ebonyfortunatow.com>".
 //                       Defaults to Resend's test sender, which only delivers to your Resend account email.
-//   STUDIO_EMAIL        (optional) where studio notifications go; defaults to studio@ebonyfortunatow.com
+//   STUDIO_EMAIL        (optional) where studio notifications go; defaults to ebonyfortunatow@gmail.com
 
 const {
   redis, storageConfigured, getConfig, todayIso, seatsFor, readBody,
@@ -77,7 +77,7 @@ module.exports = async function handler(req, res) {
 
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.BOOKING_FROM_EMAIL || 'Ebony Fortunatow <onboarding@resend.dev>';
-  const studio = process.env.STUDIO_EMAIL || 'studio@ebonyfortunatow.com';
+  const studio = process.env.STUDIO_EMAIL || 'ebonyfortunatow@gmail.com';
   if (!apiKey) {
     console.error('RESEND_API_KEY is not set for this deployment');
     return res.status(500).json({ error: 'Booking email is not configured yet (RESEND_API_KEY missing).' });
