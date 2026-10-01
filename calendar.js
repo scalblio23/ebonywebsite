@@ -1,4 +1,4 @@
-function initCalendar(calendarId, btnId, workshopName) {
+function initCalendar(calendarId, btnId, workshopName, fixedDates) {
   const container = document.getElementById(calendarId);
   const btn = document.getElementById(btnId);
   if (!container) return;
@@ -6,7 +6,13 @@ function initCalendar(calendarId, btnId, workshopName) {
   // Seed some available dates (Saturdays and Sundays over next 3 months)
   const today = new Date();
   const available = new Set();
-  for (let i = 7; i < 100; i++) {
+  if (fixedDates) {
+    // Specific dates passed in as 'YYYY-MM-DD'
+    fixedDates.forEach(s => {
+      const [y, m, d] = s.split('-').map(Number);
+      available.add(new Date(y, m - 1, d).toDateString());
+    });
+  } else for (let i = 7; i < 100; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     if (d.getDay() === 6 || d.getDay() === 0) {
@@ -17,7 +23,10 @@ function initCalendar(calendarId, btnId, workshopName) {
     }
   }
 
-  let current = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Open on the month of the first upcoming date
+  const upcoming = [...available].map(s => new Date(s)).filter(d => d >= today).sort((a, b) => a - b)[0];
+  const start = upcoming || today;
+  let current = new Date(start.getFullYear(), start.getMonth(), 1);
   let selected = null;
 
   function render() {
@@ -72,7 +81,7 @@ function initCalendar(calendarId, btnId, workshopName) {
       cell.addEventListener('click', () => {
         selected = cell.dataset.date;
         const subject = encodeURIComponent(`Booking – ${workshopName} – ${selected}`);
-        btn.href = `mailto:studio@ebonyfortunatow.com?subject=${subject}`;
+        btn.href = `mailto:ebonyfortunatow@gmail.com?subject=${subject}`;
         btn.textContent = `Book ${selected}`;
         render();
       });
