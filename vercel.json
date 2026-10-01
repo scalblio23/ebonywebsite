@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    { "source": "/", "destination": "/coming-soon.html", "permanent": false },
+    { "source": "/:page(index|about|workshops|thankyou|workshop-[a-z0-9-]+).html", "destination": "/coming-soon.html", "permanent": false }
+  ]
+}
