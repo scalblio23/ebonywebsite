@@ -3,7 +3,8 @@
 //
 // Environment variables:
 //   RESEND_API_KEY      (required) Resend API key
-//   BOOKING_FROM_EMAIL  (required) verified sender, e.g. "Ebony Fortunatow <bookings@ebonyfortunatow.com>"
+//   BOOKING_FROM_EMAIL  (optional) verified sender, e.g. "Ebony Fortunatow <bookings@ebonyfortunatow.com>".
+//                       Defaults to Resend's test sender, which only delivers to your Resend account email.
 //   STUDIO_EMAIL        (optional) where studio notifications go; defaults to studio@ebonyfortunatow.com
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
@@ -73,11 +74,11 @@ module.exports = async function handler(req, res) {
   if (error) return res.status(400).json({ error });
 
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.BOOKING_FROM_EMAIL;
+  const from = process.env.BOOKING_FROM_EMAIL || 'Ebony Fortunatow <onboarding@resend.dev>';
   const studio = process.env.STUDIO_EMAIL || 'studio@ebonyfortunatow.com';
-  if (!apiKey || !from) {
-    console.error('RESEND_API_KEY or BOOKING_FROM_EMAIL is not set');
-    return res.status(500).json({ error: 'Booking email is not configured yet.' });
+  if (!apiKey) {
+    console.error('RESEND_API_KEY is not set for this deployment');
+    return res.status(500).json({ error: 'Booking email is not configured yet (RESEND_API_KEY missing).' });
   }
 
   const b = {
@@ -123,7 +124,8 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify(emails),
     });
     if (!r.ok) {
-      console.error('Resend error', r.status, await r.text());
+      const detail = await r.text();
+      console.error('Resend error', r.status, detail);
       return res.status(502).json({ error: 'We could not send your confirmation email. Please try again.' });
     }
     return res.status(200).json({ ok: true });
