@@ -1,5 +1,5 @@
 // Admin login: credentials come from env vars, sessions are HMAC-signed cookies.
-//   ADMIN_EMAIL     (optional) defaults to ebonyhead@gmail.com
+//   ADMIN_EMAIL     (optional) defaults to ebonyheid@gmail.com
 //   ADMIN_PASSWORD  (required) the admin password
 //   ADMIN_SECRET    (optional) signing key for sessions; defaults to one derived from ADMIN_PASSWORD
 const crypto = require('crypto');
@@ -8,7 +8,7 @@ const COOKIE = 'ef_admin';
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function adminEmail() {
-  return (process.env.ADMIN_EMAIL || 'ebonyhead@gmail.com').trim().toLowerCase();
+  return (process.env.ADMIN_EMAIL || 'ebonyheid@gmail.com').trim().toLowerCase();
 }
 
 function secret() {
