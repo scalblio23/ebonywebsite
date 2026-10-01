@@ -444,6 +444,23 @@ a { text-decoration: none; color: inherit; }
 
 .footer-links a:hover { color: rgba(255,255,255,0.85); }
 
+.footer-login {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+}
+
+.footer-login a {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  transition: color 0.2s;
+}
+
+.footer-login a:hover { color: rgba(255,255,255,0.85); }
+
 .footer-contact p {
   font-size: 12px;
   color: rgba(255,255,255,0.4);
@@ -955,6 +972,14 @@ a { text-decoration: none; color: inherit; }
   transition: background 0.15s, color 0.15s;
 }
 .bk-time:hover, .bk-time.selected { background: var(--brown); color: var(--white); }
+.bk-time { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; }
+.bk-time span { font-size: 11px; letter-spacing: 0.08em; opacity: 0.75; }
+.bk-time.full { border-color: rgba(0,0,0,0.12); color: rgba(0,0,0,0.35); cursor: default; }
+.bk-time.full:hover { background: var(--white); color: rgba(0,0,0,0.35); }
+.bk .cal-cell.full { color: rgba(0,0,0,0.3); text-decoration: line-through; }
+.bk-empty { margin-top: 16px; }
+.bk-empty a, .bk-body .bk-sub a { color: var(--brown); text-decoration: underline; text-underline-offset: 3px; }
+.bk-error-top { margin-bottom: 14px; }
 
 .bk-summary {
   display: grid;

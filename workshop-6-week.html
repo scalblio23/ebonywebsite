@@ -86,15 +86,15 @@
     </div>
   </section>
 
-  <section class="ws-booking">
+  <!-- BOOKING -->
+  <section class="ws-booking" id="book">
     <div class="ws-booking-inner">
       <div class="ws-booking-text">
-        <h2>Enrol in the Next Intake</h2>
-        <p>Select a course start date below and get in touch to secure your place. Enrolments close one week before each intake begins.</p>
-        <p class="ws-booking-note">Once you've selected a date, email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> or use the button below.</p>
-        <a href="mailto:studio@ebonyfortunatow.com?subject=Enrolment - 6 Week Course" class="btn-solid" id="book-btn">Select a date first</a>
+        <h2>Book Your Spot</h2>
+        <p>Pick a date, choose a session time and add your details to reserve your place. Spots fill quickly.</p>
+        <p class="ws-booking-note">You'll get a confirmation email as soon as you book. Questions? Email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a>.</p>
       </div>
-      <div class="ws-calendar" id="calendar"></div>
+      <div class="ws-calendar bk" id="booking"></div>
     </div>
   </section>
 
@@ -113,10 +113,11 @@
         <p>Studio: 2 Ann St, Stepney, SA 5069</p>
       </div>
     </div>
+    <div class="footer-login"><a href="admin.html">Login</a></div>
   </footer>
 
   <script src="main.js"></script>
-  <script src="calendar.js"></script>
-  <script>initCalendar('calendar', 'book-btn', '6 Week Course');</script>
+  <script src="booking.js"></script>
+  <script>initBooking({ containerId: 'booking', workshop: '6-week' });</script>
 </body>
 </html>

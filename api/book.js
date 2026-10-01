@@ -1,11 +1,16 @@
-// POST /api/book — emails booking details via Resend.
-// Sends a confirmation to the customer and a notification to the studio.
+// POST /api/book — reserves a seat and emails booking details via Resend.
+// Checks availability set in the admin page, then sends a confirmation to the
+// customer and a notification to the studio.
 //
 // Environment variables:
 //   RESEND_API_KEY      (required) Resend API key
 //   BOOKING_FROM_EMAIL  (optional) verified sender, e.g. "Ebony Fortunatow <bookings@ebonyfortunatow.com>".
 //                       Defaults to Resend's test sender, which only delivers to your Resend account email.
 //   STUDIO_EMAIL        (optional) where studio notifications go; defaults to studio@ebonyfortunatow.com
+
+const {
+  redis, storageConfigured, getConfig, todayIso, seatsFor, readBody,
+} = require('./_lib/store');
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
   'August', 'September', 'October', 'November', 'December'];
@@ -25,7 +30,7 @@ function longDate(iso) {
 
 function validate(b) {
   const str = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
-  if (!str(b.workshop, 120)) return 'Missing workshop.';
+  if (!str(b.workshop, 40)) return 'Missing workshop.';
   if (typeof b.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return 'Invalid date.';
   if (!str(b.time, 60)) return 'Missing time.';
   if (!str(b.name, 120)) return 'Please enter your name.';
@@ -64,11 +69,8 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  let body = req.body;
-  if (typeof body === 'string') {
-    try { body = JSON.parse(body); } catch { body = null; }
-  }
-  if (!body || typeof body !== 'object') return res.status(400).json({ error: 'Invalid request.' });
+  const body = readBody(req);
+  if (!body) return res.status(400).json({ error: 'Invalid request.' });
 
   const error = validate(body);
   if (error) return res.status(400).json({ error });
@@ -80,12 +82,48 @@ module.exports = async function handler(req, res) {
     console.error('RESEND_API_KEY is not set for this deployment');
     return res.status(500).json({ error: 'Booking email is not configured yet (RESEND_API_KEY missing).' });
   }
+  if (!storageConfigured()) {
+    return res.status(503).json({ error: 'Online booking is not set up yet.' });
+  }
+
+  const slug = body.workshop.trim();
+  const date = body.date;
+  const time = body.time.trim();
+
+  let workshop;
+  try {
+    workshop = (await getConfig()).workshops[slug];
+  } catch (err) {
+    console.error('config load failed', err);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+  const session = workshop && workshop.dates[date];
+  if (!session || date <= todayIso() || !session.times.includes(time) || !workshop.times.includes(time)) {
+    return res.status(409).json({ error: 'That session is no longer available. Please pick another time.' });
+  }
+
+  // Reserve a seat atomically; roll back if the session is full.
+  const seatKey = `booked:${slug}`;
+  const field = `${date}|${time}`;
+  const seats = seatsFor(workshop, date);
+  const release = () => redis(['HINCRBY', seatKey, field, -1]).catch(e => console.error('seat release failed', e));
+  let taken;
+  try {
+    [taken] = await redis(['HINCRBY', seatKey, field, 1]);
+  } catch (err) {
+    console.error('seat reserve failed', err);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+  if (taken > seats) {
+    await release();
+    return res.status(409).json({ error: 'Sorry, that session just filled up. Please pick another time.' });
+  }
 
   const b = {
-    workshop: body.workshop.trim(),
-    date: body.date,
-    time: body.time.trim(),
-    price: Number(body.price) || 0,
+    workshop: workshop.name,
+    date,
+    time,
+    price: workshop.price,
     name: body.name.trim(),
     email: body.email.trim(),
     phone: body.phone.trim(),
@@ -124,13 +162,18 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify(emails),
     });
     if (!r.ok) {
-      const detail = await r.text();
-      console.error('Resend error', r.status, detail);
+      console.error('Resend error', r.status, await r.text());
+      await release();
       return res.status(502).json({ error: 'We could not send your confirmation email. Please try again.' });
     }
-    return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('Resend request failed', err);
+    await release();
     return res.status(502).json({ error: 'We could not send your confirmation email. Please try again.' });
   }
+
+  const record = { ...b, slug, createdAt: new Date().toISOString() };
+  await redis(['RPUSH', `bookings:${slug}`, JSON.stringify(record)])
+    .catch(e => console.error('booking record failed', e));
+  return res.status(200).json({ ok: true });
 };

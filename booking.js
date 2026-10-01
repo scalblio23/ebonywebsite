@@ -1,18 +1,12 @@
 // Calendly-style booking widget: date → time → details → book → payment (demo).
+// Dates, times and seats come from /api/availability (set in admin.html).
 // Usage:
-//   initBooking({
-//     containerId: 'booking',
-//     workshop: 'Beginners Hand-building',
-//     price: 98,
-//     times: ['10:00am – 12:00pm', '1:00pm – 3:00pm'],
-//     endpoint: '/api/book',
-//   });
+//   initBooking({ containerId: 'booking', workshop: 'beginners' });
 function initBooking(opts) {
   const root = document.getElementById(opts.containerId);
   if (!root) return;
 
   const endpoint = opts.endpoint || '/api/book';
-  const times = opts.times || ['10:00am – 12:00pm', '1:00pm – 3:00pm'];
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
     'August', 'September', 'October', 'November', 'December'];
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -20,18 +14,12 @@ function initBooking(opts) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Demo availability: alternating weekends over the next ~3 months
-  const available = new Set();
-  for (let i = 7; i < 100; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    if ((d.getDay() === 6 || d.getDay() === 0) && Math.floor(i / 7) % 2 === 0) {
-      available.add(isoDate(d));
-    }
-  }
+  // date -> [{ time, left }], filled from the API
+  let sessions = new Map();
 
   const state = {
-    step: 'date',
+    step: 'loading',
+    loadError: '',
     month: new Date(today.getFullYear(), today.getMonth(), 1),
     date: null,
     time: null,
@@ -39,6 +27,29 @@ function initBooking(opts) {
     error: '',
     submitting: false,
   };
+
+  async function load(moveToFirst) {
+    try {
+      const res = await fetch(`/api/availability?workshop=${encodeURIComponent(opts.workshop)}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not load availability.');
+      opts.name = data.name;
+      opts.price = data.price;
+      sessions = new Map(data.dates.map(d => [d.date, d.slots]));
+      const first = data.dates.find(d => d.slots.some(s => s.left > 0));
+      if (moveToFirst && first) {
+        const f = fromIso(first.date);
+        state.month = new Date(f.getFullYear(), f.getMonth(), 1);
+      }
+      state.loadError = '';
+    } catch (err) {
+      state.loadError = err.message === 'Failed to fetch' ? 'Could not load availability.' : err.message;
+    }
+  }
+
+  function seatsLeft(iso) {
+    return (sessions.get(iso) || []).reduce((n, s) => n + s.left, 0);
+  }
 
   function isoDate(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -89,17 +100,21 @@ function initBooking(opts) {
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d);
       const iso = isoDate(date);
-      const clickable = date >= today && available.has(iso);
+      const clickable = date > today && seatsLeft(iso) > 0;
       let cls = 'cal-cell';
-      if (date < today) cls += ' past';
+      if (date <= today) cls += ' past';
       else if (iso === state.date) cls += ' selected';
       else if (clickable) cls += ' available';
+      else if (sessions.has(iso)) cls += ' full';
       else cls += ' unavailable';
       html += clickable
         ? `<button type="button" class="${cls}" data-date="${iso}">${d}</button>`
         : `<div class="${cls}">${d}</div>`;
     }
     html += `</div><p class="bk-legend"><span class="bk-dot"></span> Available</p>`;
+    if (!sessions.size) {
+      html += `<p class="bk-sub bk-empty">No dates are open for booking right now. Email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> to register your interest.</p>`;
+    }
     return html;
   }
 
@@ -108,8 +123,11 @@ function initBooking(opts) {
       <button type="button" class="bk-back" data-back="date">&#8249; Back</button>
       <p class="bk-heading">Select a time</p>
       <p class="bk-sub">${longDate(state.date)}</p>
+      ${state.error ? `<p class="bk-error bk-error-top" role="alert">${esc(state.error)}</p>` : ''}
       <div class="bk-times">
-        ${times.map(t => `<button type="button" class="bk-time${t === state.time ? ' selected' : ''}" data-time="${esc(t)}">${esc(t)}</button>`).join('')}
+        ${(sessions.get(state.date) || []).map(s => s.left > 0
+          ? `<button type="button" class="bk-time${s.time === state.time ? ' selected' : ''}" data-time="${esc(s.time)}">${esc(s.time)}<span>${s.left} ${s.left === 1 ? 'spot' : 'spots'} left</span></button>`
+          : `<div class="bk-time full">${esc(s.time)}<span>Full</span></div>`).join('')}
       </div>
     `;
   }
@@ -117,7 +135,7 @@ function initBooking(opts) {
   function summary() {
     return `
       <div class="bk-summary">
-        <div><span>Workshop</span><p>${esc(opts.workshop)}</p></div>
+        <div><span>Workshop</span><p>${esc(opts.name)}</p></div>
         <div><span>Date</span><p>${longDate(state.date)}</p></div>
         <div><span>Time</span><p>${esc(state.time)}</p></div>
         <div><span>Price</span><p>$${opts.price} per person</p></div>
@@ -154,8 +172,16 @@ function initBooking(opts) {
     `;
   }
 
+  function renderLoading() {
+    return state.loadError
+      ? `<p class="bk-error" role="alert">${esc(state.loadError)}</p>
+         <p class="bk-sub">Please email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> to book.</p>`
+      : `<p class="bk-sub">Loading available dates…</p>`;
+  }
+
   function render() {
     const body = {
+      loading: renderLoading,
       date: renderDate,
       time: renderTime,
       details: renderDetails,
@@ -189,7 +215,6 @@ function initBooking(opts) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workshop: opts.workshop,
-          price: opts.price,
           date: state.date,
           time: state.time,
           name: state.details.name.trim(),
@@ -198,8 +223,16 @@ function initBooking(opts) {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      if (!res.ok) {
+        if (res.status === 409) {
+          await load(false);
+          state.step = 'time';
+          state.time = null;
+        }
+        throw new Error(data.error || 'Something went wrong. Please try again.');
+      }
       state.submitting = false;
+      load(false);
       openPayment();
     } catch (err) {
       state.submitting = false;
@@ -220,9 +253,9 @@ function initBooking(opts) {
         <p class="bk-demo-tag">Demo checkout · Whop</p>
         <h3 id="bk-modal-title">Complete your payment</h3>
         <div class="bk-modal-order">
-          <div><span>${esc(opts.workshop)}</span><span>$${opts.price.toFixed(2)}</span></div>
+          <div><span>${esc(opts.name)}</span><span>$${Number(opts.price).toFixed(2)}</span></div>
           <div class="bk-modal-meta">${longDate(state.date)} · ${esc(state.time)}</div>
-          <div class="bk-modal-total"><span>Total</span><span>$${opts.price.toFixed(2)} AUD</span></div>
+          <div class="bk-modal-total"><span>Total</span><span>$${Number(opts.price).toFixed(2)} AUD</span></div>
         </div>
         <form class="bk-form bk-pay-form">
           <label>Card number<input type="text" value="4242 4242 4242 4242" readonly /></label>
@@ -230,7 +263,7 @@ function initBooking(opts) {
             <label>Expiry<input type="text" value="12 / 30" readonly /></label>
             <label>CVC<input type="text" value="123" readonly /></label>
           </div>
-          <button type="submit" class="btn-solid bk-submit">Pay $${opts.price.toFixed(2)}</button>
+          <button type="submit" class="btn-solid bk-submit">Pay $${Number(opts.price).toFixed(2)}</button>
           <p class="bk-demo-note">This is a demo. No payment will be taken.</p>
         </form>
       </div>
@@ -272,6 +305,7 @@ function initBooking(opts) {
     } else if (t.dataset.date) {
       state.date = t.dataset.date;
       state.time = null;
+      state.error = '';
       state.step = 'time';
       render();
     } else if (t.dataset.time) {
@@ -297,4 +331,8 @@ function initBooking(opts) {
   });
 
   render();
+  load(true).then(() => {
+    if (!state.loadError) state.step = 'date';
+    render();
+  });
 }

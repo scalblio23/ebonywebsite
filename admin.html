@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Studio Admin – Ebony Fortunatow</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="adm-body">
+
+  <header class="adm-header">
+    <a href="index.html" class="adm-logo">EBONY FORTUNATOW</a>
+    <div class="adm-header-right" id="adm-user" hidden>
+      <span>Studio admin</span>
+      <button type="button" class="adm-link" id="adm-logout">Log out</button>
+    </div>
+  </header>
+
+  <!-- LOGIN -->
+  <main class="adm-login" id="adm-login" hidden>
+    <form class="adm-card adm-login-card" id="adm-login-form" novalidate>
+      <h1>Studio Login</h1>
+      <p class="adm-muted">Manage workshop dates, times and seats.</p>
+      <label>Email<input name="email" type="email" autocomplete="username" required /></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+      <p class="adm-error" id="adm-login-error" role="alert" hidden></p>
+      <button type="submit" class="btn-solid adm-btn-full">Log in</button>
+    </form>
+  </main>
+
+  <!-- DASHBOARD -->
+  <main class="adm-main" id="adm-app" hidden>
+    <div class="adm-title-row">
+      <h1>Availability</h1>
+      <p class="adm-muted">Pick a workshop, set its times and seats, then click dates on the calendar to open or close them.</p>
+    </div>
+    <p class="adm-error adm-banner" id="adm-app-error" role="alert" hidden></p>
+    <nav class="adm-tabs" id="adm-tabs"></nav>
+    <div id="adm-panel"></div>
+  </main>
+
+  <p class="adm-loading" id="adm-loading">Loading…</p>
+
+  <div class="adm-savebar" id="adm-savebar" hidden>
+    <span id="adm-save-status">You have unsaved changes</span>
+    <div>
+      <button type="button" class="btn-outline" id="adm-discard">Discard</button>
+      <button type="button" class="btn-solid" id="adm-save">Save changes</button>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

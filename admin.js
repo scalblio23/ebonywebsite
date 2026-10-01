@@ -1,0 +1,454 @@
+// Studio admin: edit workshop availability (dates, times, seats) and view bookings.
+(function () {
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const $ = id => document.getElementById(id);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let server = null;   // last data from the server: { workshops, booked, bookings }
+  let draft = null;    // editable copy of server.workshops
+  let dirty = false;
+  let active = null;   // workshop slug
+  let month = new Date(today.getFullYear(), today.getMonth(), 1);
+  let selected = null; // ISO date being edited
+
+  // ---------- helpers ----------
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+  function isoDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function fromIso(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function longDate(iso) {
+    const d = fromIso(iso);
+    return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  }
+  function shortDate(iso) {
+    const d = fromIso(iso);
+    return `${DAYS[d.getDay()].slice(0, 3)} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+  }
+  function fmtClock(v) {
+    const [h, m] = v.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`;
+  }
+  function isFuture(iso) {
+    return fromIso(iso) > today;
+  }
+  function w() {
+    return draft[active];
+  }
+  function seatsFor(iso) {
+    const d = w().dates[iso];
+    return d && Number.isInteger(d.seats) ? d.seats : w().seatLimit;
+  }
+  function bookedFor(iso, time) {
+    return (server.booked[active] || {})[`${iso}|${time}`] || 0;
+  }
+  function bookedOnDate(iso) {
+    return w().times.reduce((n, t) => n + bookedFor(iso, t), 0);
+  }
+
+  async function api(path, options = {}) {
+    const res = await fetch(path, {
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'Something went wrong.');
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  function show(view) {
+    $('adm-loading').hidden = view !== 'loading';
+    $('adm-login').hidden = view !== 'login';
+    $('adm-app').hidden = view !== 'app';
+    $('adm-user').hidden = view !== 'app';
+  }
+
+  function setDirty(v) {
+    dirty = v;
+    $('adm-savebar').hidden = !v;
+    $('adm-save-status').textContent = 'You have unsaved changes';
+    $('adm-save').disabled = false;
+  }
+
+  function appError(msg) {
+    $('adm-app-error').textContent = msg || '';
+    $('adm-app-error').hidden = !msg;
+  }
+
+  // ---------- rendering ----------
+  function renderTabs() {
+    $('adm-tabs').innerHTML = Object.entries(draft).map(([slug, x]) =>
+      `<button type="button" class="adm-tab${slug === active ? ' active' : ''}" data-tab="${slug}">${esc(x.name)}</button>`
+    ).join('');
+  }
+
+  function renderSettings() {
+    const x = w();
+    return `
+      <section class="adm-card">
+        <h2>Workshop settings</h2>
+        <div class="adm-fields">
+          <label>Price per person ($)<input type="number" min="0" step="1" data-field="price" value="${x.price}" /></label>
+          <label>Seats per session<input type="number" min="1" step="1" data-field="seatLimit" value="${x.seatLimit}" /></label>
+        </div>
+        <h3>Session times</h3>
+        <p class="adm-muted">The times people can choose from. Untick a time on a specific date to close just that session.</p>
+        <ul class="adm-times">
+          ${x.times.length ? x.times.map((t, i) => `
+            <li><span>${esc(t)}</span><button type="button" class="adm-x" data-remove-time="${i}" aria-label="Remove ${esc(t)}">&times;</button></li>
+          `).join('') : '<li class="adm-muted">No times yet — add one below.</li>'}
+        </ul>
+        <div class="adm-add-time">
+          <label>Start<input type="time" id="adm-time-start" value="10:00" /></label>
+          <label>End<input type="time" id="adm-time-end" value="12:00" /></label>
+          <button type="button" class="btn-outline" data-add-time>Add time</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderCalendar() {
+    const year = month.getFullYear();
+    const m = month.getMonth();
+    const firstDay = new Date(year, m, 1).getDay();
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    const atStart = year === today.getFullYear() && m === today.getMonth();
+    let cells = '';
+    for (let i = 0; i < firstDay; i++) cells += `<div class="adm-cell empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = isoDate(new Date(year, m, d));
+      const open = !!w().dates[iso];
+      const future = isFuture(iso);
+      let cls = 'adm-cell';
+      if (!future) cls += ' past';
+      if (open) cls += ' open';
+      if (iso === selected) cls += ' selected';
+      const booked = open ? bookedOnDate(iso) : 0;
+      cells += future || open
+        ? `<button type="button" class="${cls}" data-date="${iso}">${d}${booked ? `<small>${booked}</small>` : ''}</button>`
+        : `<div class="${cls}">${d}</div>`;
+    }
+    return `
+      <section class="adm-card">
+        <h2>Dates</h2>
+        <p class="adm-muted">Click a date to open it for booking. Click an open date to edit or close it.</p>
+        <div class="cal-header">
+          <button type="button" class="cal-nav" data-month="-1" ${atStart ? 'disabled' : ''} aria-label="Previous month">&#8249;</button>
+          <span class="cal-title">${MONTHS[m]} ${year}</span>
+          <button type="button" class="cal-nav" data-month="1" aria-label="Next month">&#8250;</button>
+        </div>
+        <div class="adm-cal">
+          ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(n => `<div class="cal-day-name">${n}</div>`).join('')}
+          ${cells}
+        </div>
+        <div class="adm-legend">
+          <span><i class="adm-sw open"></i> Open</span>
+          <span><i class="adm-sw"></i> Closed</span>
+          <span><small class="adm-badge">3</small> Seats booked</span>
+        </div>
+        <div class="adm-bulk">
+          <span class="adm-muted">This month:</span>
+          <button type="button" class="adm-link" data-bulk="6">Open all Saturdays</button>
+          <button type="button" class="adm-link" data-bulk="0">Open all Sundays</button>
+          <button type="button" class="adm-link" data-bulk="close">Close all without bookings</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderDateEditor() {
+    if (!selected || !w().dates[selected]) {
+      return `
+        <section class="adm-card adm-empty" id="adm-editor">
+          <h2>Session details</h2>
+          <p class="adm-muted">Select an open date on the calendar to change its times and seats, and to see who's booked.</p>
+        </section>
+      `;
+    }
+    const d = w().dates[selected];
+    const seats = seatsFor(selected);
+    const people = (server.bookings[active] || []).filter(b => b.date === selected);
+    return `
+      <section class="adm-card" id="adm-editor">
+        <h2>${longDate(selected)}</h2>
+        <div class="adm-fields">
+          <label>Seats per session on this date
+            <input type="number" min="0" step="1" data-date-seats placeholder="Default (${w().seatLimit})" value="${Number.isInteger(d.seats) ? d.seats : ''}" />
+          </label>
+        </div>
+        <h3>Times open</h3>
+        ${w().times.length ? `<ul class="adm-checks">
+          ${w().times.map(t => {
+            const booked = bookedFor(selected, t);
+            return `<li>
+              <label><input type="checkbox" data-date-time="${esc(t)}" ${d.times.includes(t) ? 'checked' : ''} /> ${esc(t)}</label>
+              <span class="adm-count${booked >= seats ? ' full' : ''}">${booked} / ${seats} booked</span>
+            </li>`;
+          }).join('')}
+        </ul>` : '<p class="adm-muted">Add a session time in Workshop settings first.</p>'}
+        <h3>Bookings</h3>
+        ${people.length ? `<ul class="adm-people">
+          ${people.map(p => `<li>
+            <strong>${esc(p.name)}</strong> <span class="adm-muted">${esc(p.time)}</span><br />
+            <a href="mailto:${esc(p.email)}">${esc(p.email)}</a> · <a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>
+          </li>`).join('')}
+        </ul>` : '<p class="adm-muted">No bookings yet.</p>'}
+        <button type="button" class="btn-outline adm-danger" data-close-date>Close this date</button>
+      </section>
+    `;
+  }
+
+  function renderUpcoming() {
+    const dates = Object.keys(w().dates).filter(isFuture).sort();
+    const rows = [];
+    for (const iso of dates) {
+      const d = w().dates[iso];
+      const seats = seatsFor(iso);
+      const times = d.times.filter(t => w().times.includes(t));
+      if (!times.length) {
+        rows.push(`<tr data-date="${iso}"><td>${shortDate(iso)}</td><td class="adm-muted">No times open</td><td></td></tr>`);
+      }
+      for (const t of times) {
+        const booked = bookedFor(iso, t);
+        rows.push(`<tr data-date="${iso}" class="${iso === selected ? 'selected' : ''}">
+          <td>${shortDate(iso)}</td><td>${esc(t)}</td>
+          <td class="${booked >= seats ? 'adm-full' : ''}">${booked} / ${seats}${booked >= seats ? ' · Full' : ''}</td>
+        </tr>`);
+      }
+    }
+    return `
+      <section class="adm-card adm-wide">
+        <h2>Upcoming sessions</h2>
+        ${rows.length ? `<div class="adm-table-wrap"><table class="adm-table">
+          <thead><tr><th>Date</th><th>Time</th><th>Booked</th></tr></thead>
+          <tbody>${rows.join('')}</tbody>
+        </table></div>` : '<p class="adm-muted">No upcoming dates are open. Click dates on the calendar to open them.</p>'}
+      </section>
+    `;
+  }
+
+  function render() {
+    renderTabs();
+    $('adm-panel').innerHTML = `<div class="adm-grid">
+      ${renderSettings()}
+      ${renderCalendar()}
+      ${renderDateEditor()}
+      ${renderUpcoming()}
+    </div>`;
+  }
+
+  // ---------- actions ----------
+  function openDate(iso) {
+    if (!w().dates[iso]) {
+      w().dates[iso] = { times: [...w().times], seats: null };
+      setDirty(true);
+    }
+  }
+
+  function closeDate(iso) {
+    const booked = bookedOnDate(iso);
+    if (booked && !confirm(`${longDate(iso)} has ${booked} booking${booked === 1 ? '' : 's'}. Close it anyway? Existing bookings are kept, but nobody else can book.`)) {
+      return false;
+    }
+    delete w().dates[iso];
+    setDirty(true);
+    return true;
+  }
+
+  $('adm-panel').addEventListener('click', e => {
+    const t = e.target.closest('button, tr[data-date]');
+    if (!t) return;
+    const ds = t.dataset;
+    if (ds.month) {
+      month = new Date(month.getFullYear(), month.getMonth() + Number(ds.month), 1);
+    } else if (ds.date) {
+      if (t.tagName === 'BUTTON' && isFuture(ds.date)) openDate(ds.date);
+      selected = ds.date;
+      const d = fromIso(ds.date);
+      month = new Date(d.getFullYear(), d.getMonth(), 1);
+      render();
+      // On narrow screens the editor sits below the calendar; bring it into view.
+      if (window.innerWidth <= 900) $('adm-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    } else if (ds.bulk) {
+      const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+      for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(month.getFullYear(), month.getMonth(), i);
+        const iso = isoDate(date);
+        if (!isFuture(iso)) continue;
+        if (ds.bulk === 'close') {
+          if (w().dates[iso] && !bookedOnDate(iso)) {
+            delete w().dates[iso];
+            setDirty(true);
+          }
+        } else if (date.getDay() === Number(ds.bulk)) {
+          openDate(iso);
+        }
+      }
+      if (selected && !w().dates[selected]) selected = null;
+    } else if ('closeDate' in ds) {
+      if (closeDate(selected)) selected = null;
+    } else if ('addTime' in ds) {
+      const start = $('adm-time-start').value;
+      const end = $('adm-time-end').value;
+      if (!start || !end) return;
+      const label = `${fmtClock(start)} – ${fmtClock(end)}`;
+      if (w().times.includes(label)) return;
+      w().times.push(label);
+      // New times open on every upcoming date; untick per date if needed.
+      for (const [iso, d] of Object.entries(w().dates)) {
+        if (isFuture(iso) && !d.times.includes(label)) d.times.push(label);
+      }
+      setDirty(true);
+    } else if (ds.removeTime !== undefined) {
+      const label = w().times[Number(ds.removeTime)];
+      const booked = Object.keys(w().dates).filter(isFuture).reduce((n, iso) => n + bookedFor(iso, label), 0);
+      if (!confirm(booked
+        ? `${label} has ${booked} upcoming booking${booked === 1 ? '' : 's'}. Remove it anyway? Existing bookings are kept.`
+        : `Remove ${label} from all dates?`)) return;
+      w().times.splice(Number(ds.removeTime), 1);
+      for (const d of Object.values(w().dates)) d.times = d.times.filter(x => x !== label);
+      setDirty(true);
+    } else {
+      return;
+    }
+    render();
+  });
+
+  $('adm-panel').addEventListener('input', e => {
+    const el = e.target;
+    if (el.dataset.field) {
+      const v = Number(el.value);
+      if (el.value !== '' && Number.isFinite(v) && v >= 0) {
+        w()[el.dataset.field] = el.dataset.field === 'seatLimit' ? Math.max(1, Math.round(v)) : v;
+        setDirty(true);
+      }
+    } else if ('dateSeats' in el.dataset) {
+      w().dates[selected].seats = el.value === '' ? null : Math.max(0, Math.round(Number(el.value)));
+      setDirty(true);
+    }
+  });
+
+  $('adm-panel').addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset.field || 'dateSeats' in el.dataset) {
+      render(); // refresh seat counts shown elsewhere
+    } else if (el.dataset.dateTime) {
+      const d = w().dates[selected];
+      const t = el.dataset.dateTime;
+      d.times = el.checked
+        ? w().times.filter(x => x === t || d.times.includes(x))
+        : d.times.filter(x => x !== t);
+      setDirty(true);
+      render();
+    }
+  });
+
+  $('adm-tabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (!t) return;
+    active = t.dataset.tab;
+    selected = null;
+    render();
+  });
+
+  $('adm-save').addEventListener('click', async () => {
+    $('adm-save').disabled = true;
+    $('adm-save-status').textContent = 'Saving…';
+    try {
+      const saved = await api('/api/admin/config', { method: 'PUT', body: JSON.stringify({ workshops: draft }) });
+      server.workshops = saved.workshops;
+      draft = structuredClone(saved.workshops);
+      setDirty(false);
+      appError('');
+      render();
+    } catch (err) {
+      if (err.status === 401) return show('login');
+      $('adm-save').disabled = false;
+      $('adm-save-status').textContent = `Couldn't save: ${err.message}`;
+    }
+  });
+
+  $('adm-discard').addEventListener('click', () => {
+    draft = structuredClone(server.workshops);
+    if (selected && !w().dates[selected]) selected = null;
+    setDirty(false);
+    render();
+  });
+
+  window.addEventListener('beforeunload', e => {
+    if (dirty) e.preventDefault();
+  });
+
+  // ---------- auth ----------
+  async function loadApp() {
+    show('loading');
+    try {
+      server = await api('/api/admin/config');
+      draft = structuredClone(server.workshops);
+      if (!active || !draft[active]) active = Object.keys(draft)[0];
+      setDirty(false);
+      appError('');
+      show('app');
+      render();
+    } catch (err) {
+      if (err.status === 401) {
+        show('login');
+      } else {
+        show('app');
+        $('adm-tabs').innerHTML = '';
+        $('adm-panel').innerHTML = '';
+        appError(err.message);
+      }
+    }
+  }
+
+  $('adm-login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button');
+    const errEl = $('adm-login-error');
+    errEl.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Logging in…';
+    try {
+      await api('/api/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: form.email.value, password: form.password.value }),
+      });
+      form.password.value = '';
+      await loadApp();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.hidden = false;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Log in';
+    }
+  });
+
+  $('adm-logout').addEventListener('click', async () => {
+    if (dirty && !confirm('You have unsaved changes. Log out anyway?')) return;
+    await api('/api/admin/logout', { method: 'POST' }).catch(() => {});
+    setDirty(false);
+    show('login');
+  });
+
+  loadApp();
+})();
