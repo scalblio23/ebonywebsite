@@ -89,15 +89,16 @@ a { text-decoration: none; color: inherit; }
 /* ===== BUTTONS ===== */
 .btn-outline {
   display: inline-block;
-  padding: 10px 28px;
+  padding: 15px 38px;
   border: 1px solid var(--brown);
   color: var(--brown);
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 400;
+  font-size: 12.5px;
+  font-weight: 500;
   letter-spacing: 0.18em;
+  text-align: center;
   text-transform: uppercase;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .btn-outline:hover {
@@ -107,18 +108,27 @@ a { text-decoration: none; color: inherit; }
 
 .btn-solid {
   display: inline-block;
-  padding: 14px 36px;
+  padding: 17px 44px;
   background: var(--brown);
+  border: 1px solid var(--brown);
   color: var(--white);
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.15em;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-align: center;
   text-transform: uppercase;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
-.btn-solid:hover { background: var(--charcoal); }
+.btn-solid:hover { background: var(--charcoal); border-color: var(--charcoal); }
+
+.btn-outline:focus-visible,
+.btn-solid:focus-visible,
+.bk-back:focus-visible {
+  outline: 2px solid var(--brown);
+  outline-offset: 3px;
+}
 
 /* ===== HERO ===== */
 .hero {
@@ -161,9 +171,13 @@ a { text-decoration: none; color: inherit; }
 }
 
 .hero-text .btn-outline {
-  margin-top: 20px;
+  margin-top: 24px;
+  padding: 18px 48px;
+  font-size: 13.5px;
   border-color: var(--white);
   color: var(--white);
+  background: rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(2px);
 }
 
 .hero-text .btn-outline:hover {
@@ -562,6 +576,8 @@ a { text-decoration: none; color: inherit; }
   margin-top: auto;
 }
 
+.workshop-info .btn-solid { margin-top: 8px; width: 100%; }
+
 /* ===== BOOKING ===== */
 .booking {
   background: var(--white);
@@ -952,11 +968,11 @@ a { text-decoration: none; color: inherit; }
   background: none;
   border: none;
   color: var(--brown);
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.1em;
   cursor: pointer;
-  padding: 0;
-  margin-bottom: 16px;
+  padding: 8px 0;
+  margin: -8px 0 8px;
 }
 .bk-back:hover { color: var(--charcoal); }
 
@@ -1024,7 +1040,7 @@ a { text-decoration: none; color: inherit; }
 .bk-form input:focus { outline: none; border-color: var(--brown); }
 .bk-form input[readonly] { background: var(--cream-light); color: var(--text-light); }
 .bk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.bk-submit { border: none; cursor: pointer; width: 100%; margin-top: 6px; }
+.bk-submit { cursor: pointer; width: 100%; margin-top: 8px; padding: 19px 24px; font-size: 13.5px; }
 .bk-submit:disabled { opacity: 0.6; cursor: progress; }
 .bk-error { font-size: 13px; color: #a33a2a; }
 .bk-again { background: none; cursor: pointer; margin-top: 4px; }
@@ -1097,6 +1113,8 @@ body.bk-modal-open { overflow: hidden; }
   .nav { padding: 0 20px; }
 
   .hero { height: 70vh; padding: 40px 24px; }
+  .hero-text .btn-outline { padding: 17px 40px; }
+  .btn-solid, .btn-outline { padding-left: 32px; padding-right: 32px; }
   .hero-text { align-items: center; }
   .hero-label { text-align: center; }
 
