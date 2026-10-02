@@ -1,4 +1,4 @@
-// Calendly-style booking widget: date → time → details → book → payment (demo).
+// Calendly-style booking widget: date → time → details → Square checkout → confirmed.
 // Dates, times and seats come from /api/availability (set in admin.html).
 // Usage:
 //   initBooking({ containerId: 'booking', workshop: 'beginners' });
@@ -155,21 +155,48 @@ function initBooking(opts) {
         <label>Phone<input name="phone" type="tel" autocomplete="tel" required value="${esc(d.phone)}" /></label>
         ${state.error ? `<p class="bk-error" role="alert">${esc(state.error)}</p>` : ''}
         <button type="submit" class="btn-solid bk-submit" ${state.submitting ? 'disabled' : ''}>
-          ${state.submitting ? 'Booking…' : 'Book Class'}
+          ${state.submitting ? 'Opening secure checkout…' : `Pay $${Number(opts.price).toFixed(2)} &amp; Book`}
         </button>
       </form>
     `;
   }
 
   function renderDone() {
+    const paid = state.paymentStatus === 'paid';
     return `
       <div class="bk-done">
-        <p class="bk-heading">You're booked in</p>
-        <p class="bk-sub">A confirmation has been sent to <strong>${esc(state.details.email)}</strong>.</p>
+        <p class="bk-heading">${paid ? "You're booked in" : 'Confirming your payment…'}</p>
+        <p class="bk-sub">${paid
+          ? `Payment received. A confirmation has been sent to <strong>${esc(state.details.email)}</strong>.`
+          : `This usually takes a few seconds. Your confirmation email will go to <strong>${esc(state.details.email)}</strong>.`}</p>
         ${summary()}
         <button type="button" class="btn-outline bk-again" data-restart>Book another spot</button>
       </div>
     `;
+  }
+
+  // Customer is back from Square checkout: show the booking and wait for the payment webhook.
+  async function showReturn(id) {
+    for (let i = 0; i < 15; i++) {
+      try {
+        const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return false;
+        opts.name = data.workshop;
+        opts.price = data.price;
+        state.date = data.date;
+        state.time = data.time;
+        state.details.email = data.email;
+        state.paymentStatus = data.status;
+        state.step = 'done';
+        render();
+        if (data.status === 'paid') return true;
+      } catch {
+        return false;
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    return true;
   }
 
   function renderLoading() {
@@ -231,9 +258,8 @@ function initBooking(opts) {
         }
         throw new Error(data.error || 'Something went wrong. Please try again.');
       }
-      state.submitting = false;
-      load(false);
-      openPayment();
+      // Off to Square's secure checkout; Square sends the customer back here with ?booking=<id>.
+      window.location.href = data.checkoutUrl;
     } catch (err) {
       state.submitting = false;
       state.error = err.message === 'Failed to fetch'
@@ -241,59 +267,6 @@ function initBooking(opts) {
         : err.message;
       render();
     }
-  }
-
-  // Payment step — demo stand-in for the Whop checkout embed
-  function openPayment() {
-    const overlay = document.createElement('div');
-    overlay.className = 'bk-modal-overlay';
-    overlay.innerHTML = `
-      <div class="bk-modal" role="dialog" aria-modal="true" aria-labelledby="bk-modal-title">
-        <button type="button" class="bk-modal-close" aria-label="Close">&times;</button>
-        <p class="bk-demo-tag">Demo checkout · Whop</p>
-        <h3 id="bk-modal-title">Complete your payment</h3>
-        <div class="bk-modal-order">
-          <div><span>${esc(opts.name)}</span><span>$${Number(opts.price).toFixed(2)}</span></div>
-          <div class="bk-modal-meta">${longDate(state.date)} · ${esc(state.time)}</div>
-          <div class="bk-modal-total"><span>Total</span><span>$${Number(opts.price).toFixed(2)} AUD</span></div>
-        </div>
-        <form class="bk-form bk-pay-form">
-          <label>Card number<input type="text" value="4242 4242 4242 4242" readonly /></label>
-          <div class="bk-row">
-            <label>Expiry<input type="text" value="12 / 30" readonly /></label>
-            <label>CVC<input type="text" value="123" readonly /></label>
-          </div>
-          <button type="submit" class="btn-solid bk-submit">Pay $${Number(opts.price).toFixed(2)}</button>
-          <p class="bk-demo-note">This is a demo. No payment will be taken.</p>
-        </form>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    document.body.classList.add('bk-modal-open');
-
-    const finish = () => {
-      overlay.remove();
-      document.body.classList.remove('bk-modal-open');
-      document.removeEventListener('keydown', onKey);
-      state.step = 'done';
-      render();
-    };
-    const onKey = e => { if (e.key === 'Escape') finish(); };
-    document.addEventListener('keydown', onKey);
-
-    overlay.querySelector('.bk-modal-close').addEventListener('click', finish);
-    overlay.addEventListener('click', e => { if (e.target === overlay) finish(); });
-    overlay.querySelector('.bk-pay-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const modal = overlay.querySelector('.bk-modal');
-      modal.innerHTML = `
-        <p class="bk-demo-tag">Demo checkout · Whop</p>
-        <h3>Payment successful</h3>
-        <p class="bk-sub">Thanks ${esc(state.details.name.split(' ')[0])}, your spot is confirmed.</p>
-        <button type="button" class="btn-solid bk-submit">Done</button>
-      `;
-      modal.querySelector('button').addEventListener('click', finish);
-    });
   }
 
   root.addEventListener('click', e => {
@@ -318,6 +291,7 @@ function initBooking(opts) {
       state.error = '';
       render();
     } else if ('restart' in t.dataset) {
+      if (bookingId) history.replaceState(null, '', location.pathname + '#book');
       state.step = 'date';
       state.date = null;
       state.time = null;
@@ -330,8 +304,11 @@ function initBooking(opts) {
     submit(e.target);
   });
 
+  const bookingId = new URLSearchParams(location.search).get('booking');
+
   render();
-  load(true).then(() => {
+  load(true).then(async () => {
+    if (bookingId && await showReturn(bookingId)) return;
     if (!state.loadError) state.step = 'date';
     render();
   });

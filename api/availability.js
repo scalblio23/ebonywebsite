@@ -1,5 +1,7 @@
 // GET /api/availability?workshop=beginners — public list of bookable sessions.
-const { getConfig, getBookedCounts, todayIso, seatsFor, storageConfigured } = require('./_lib/store');
+const {
+  getConfig, getBookedCounts, todayIso, seatsFor, storageConfigured, releaseExpiredHolds,
+} = require('./_lib/store');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -11,6 +13,7 @@ module.exports = async function handler(req, res) {
 
   const slug = String(req.query.workshop || '');
   try {
+    await releaseExpiredHolds();
     const config = await getConfig();
     const w = config.workshops[slug];
     if (!w) return res.status(404).json({ error: 'Unknown workshop.' });

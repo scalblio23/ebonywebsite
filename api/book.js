@@ -1,32 +1,22 @@
-// POST /api/book — reserves a seat and emails booking details via Resend.
-// Checks availability set in the admin page, then sends a confirmation to the
-// customer and a notification to the studio.
-//
-// Environment variables:
-//   RESEND_API_KEY      (required) Resend API key
-//   BOOKING_FROM_EMAIL  (optional) verified sender, e.g. "Ebony Fortunatow <bookings@ebonyfortunatow.com>".
-//                       Defaults to Resend's test sender, which only delivers to your Resend account email.
-//   STUDIO_EMAIL        (optional) where studio notifications go; defaults to ebonyfortunatow@gmail.com
+// POST /api/book — holds a seat and returns a Square checkout link.
+// The seat is held for 30 minutes; the booking is confirmed (and emails sent)
+// by /api/square-webhook once Square reports the payment as completed.
 
+const crypto = require('crypto');
 const {
   redis, storageConfigured, getConfig, todayIso, seatsFor, readBody,
+  releaseExpiredHolds, createHold, KEEP_SECONDS,
 } = require('./_lib/store');
+const { squareConfigured, createPaymentLink } = require('./_lib/square');
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-  'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
-}
-
-function longDate(iso) {
-  const [y, m, d] = iso.split('-').map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return `${DAYS[date.getUTCDay()]}, ${d} ${MONTHS[m - 1]} ${y}`;
-}
+// Page each workshop's booking widget lives on (customers return here after paying).
+const PAGES = {
+  'beginners': 'workshop-beginners.html',
+  '6-week': 'workshop-6-week.html',
+  'dinner-set': 'workshop-dinner-set.html',
+  'serving-ware': 'workshop-serving-ware.html',
+  'vases': 'workshop-vases.html',
+};
 
 function validate(b) {
   const str = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -39,28 +29,10 @@ function validate(b) {
   return '';
 }
 
-function detailsTable(b) {
-  const rows = [
-    ['Workshop', b.workshop],
-    ['Date', longDate(b.date)],
-    ['Time', b.time],
-    ['Price', b.price ? `$${b.price} per person` : ''],
-    ['Name', b.name],
-    ['Email', b.email],
-    ['Phone', b.phone],
-    ['Location', '2 Ann St, Stepney SA 5069'],
-  ].filter(([, v]) => v);
-  return `<table style="border-collapse:collapse;font-size:14px;color:#3a3530">${rows.map(([k, v]) =>
-    `<tr><td style="padding:6px 16px 6px 0;color:#7a5c3e;text-transform:uppercase;font-size:11px;letter-spacing:.12em">${k}</td><td style="padding:6px 0">${esc(v)}</td></tr>`
-  ).join('')}</table>`;
-}
-
-function wrap(inner) {
-  return `<div style="font-family:Roboto,Helvetica,Arial,sans-serif;background:#f0ebe5;padding:32px">
-    <div style="max-width:520px;margin:0 auto;background:#fff;padding:32px">
-      <p style="font-size:12px;letter-spacing:.2em;color:#7a5c3e;margin:0 0 24px">EBONY FORTUNATOW</p>
-      ${inner}
-    </div></div>`;
+function siteOrigin(req) {
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  return `${proto}://${host}`;
 }
 
 module.exports = async function handler(req, res) {
@@ -75,14 +47,8 @@ module.exports = async function handler(req, res) {
   const error = validate(body);
   if (error) return res.status(400).json({ error });
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.BOOKING_FROM_EMAIL || 'Ebony Fortunatow <onboarding@resend.dev>';
-  const studio = process.env.STUDIO_EMAIL || 'ebonyfortunatow@gmail.com';
-  if (!apiKey) {
-    console.error('RESEND_API_KEY is not set for this deployment');
-    return res.status(500).json({ error: 'Booking email is not configured yet (RESEND_API_KEY missing).' });
-  }
-  if (!storageConfigured()) {
+  if (!storageConfigured() || !squareConfigured()) {
+    console.error('Booking unavailable: storage or Square env vars missing');
     return res.status(503).json({ error: 'Online booking is not set up yet.' });
   }
 
@@ -92,6 +58,7 @@ module.exports = async function handler(req, res) {
 
   let workshop;
   try {
+    await releaseExpiredHolds();
     workshop = (await getConfig()).workshops[slug];
   } catch (err) {
     console.error('config load failed', err);
@@ -100,6 +67,9 @@ module.exports = async function handler(req, res) {
   const session = workshop && workshop.dates[date];
   if (!session || date <= todayIso() || !session.times.includes(time) || !workshop.times.includes(time)) {
     return res.status(409).json({ error: 'That session is no longer available. Please pick another time.' });
+  }
+  if (!(workshop.price > 0)) {
+    return res.status(409).json({ error: 'This workshop is not open for online payment. Please email the studio to book.' });
   }
 
   // Reserve a seat atomically; roll back if the session is full.
@@ -119,7 +89,9 @@ module.exports = async function handler(req, res) {
     return res.status(409).json({ error: 'Sorry, that session just filled up. Please pick another time.' });
   }
 
-  const b = {
+  const id = crypto.randomBytes(16).toString('hex');
+  const hold = {
+    slug,
     workshop: workshop.name,
     date,
     time,
@@ -127,53 +99,24 @@ module.exports = async function handler(req, res) {
     name: body.name.trim(),
     email: body.email.trim(),
     phone: body.phone.trim(),
+    createdAt: new Date().toISOString(),
   };
-  const when = `${longDate(b.date)}, ${b.time}`;
-
-  const emails = [
-    {
-      from,
-      to: [b.email],
-      reply_to: studio,
-      subject: `Booking received – ${b.workshop} – ${when}`,
-      html: wrap(`
-        <h2 style="font-weight:300;letter-spacing:.08em;color:#2a2520;margin:0 0 16px">You're booked in</h2>
-        <p style="font-size:14px;color:#6b6059;line-height:1.7">Hi ${esc(b.name.split(' ')[0])}, thanks for booking. Here are your details:</p>
-        ${detailsTable(b)}
-        <p style="font-size:14px;color:#6b6059;line-height:1.7;margin-top:24px">All clay and tools are provided — just wear something you don't mind getting messy. Reply to this email if you have any questions.</p>
-      `),
-    },
-    {
-      from,
-      to: [studio],
-      reply_to: b.email,
-      subject: `New booking – ${b.workshop} – ${when} – ${b.name}`,
-      html: wrap(`
-        <h2 style="font-weight:300;letter-spacing:.08em;color:#2a2520;margin:0 0 16px">New booking</h2>
-        ${detailsTable(b)}
-      `),
-    },
-  ];
 
   try {
-    const r = await fetch('https://api.resend.com/emails/batch', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(emails),
+    const page = PAGES[slug] || 'workshops.html';
+    const link = await createPaymentLink({
+      bookingId: id,
+      name: `${workshop.name} – ${date} ${time}`,
+      price: workshop.price,
+      email: hold.email,
+      redirectUrl: `${siteOrigin(req)}/${page}?booking=${id}#book`,
     });
-    if (!r.ok) {
-      console.error('Resend error', r.status, await r.text());
-      await release();
-      return res.status(502).json({ error: 'We could not send your confirmation email. Please try again.' });
-    }
+    await createHold(id, { ...hold, orderId: link.orderId });
+    await redis(['SET', `order:${link.orderId}`, id, 'EX', KEEP_SECONDS]);
+    return res.status(200).json({ ok: true, checkoutUrl: link.url });
   } catch (err) {
-    console.error('Resend request failed', err);
+    console.error('checkout creation failed', err);
     await release();
-    return res.status(502).json({ error: 'We could not send your confirmation email. Please try again.' });
+    return res.status(502).json({ error: 'We could not start the payment. Please try again.' });
   }
-
-  const record = { ...b, slug, createdAt: new Date().toISOString() };
-  await redis(['RPUSH', `bookings:${slug}`, JSON.stringify(record)])
-    .catch(e => console.error('booking record failed', e));
-  return res.status(200).json({ ok: true });
 };
