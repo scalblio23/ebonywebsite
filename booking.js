@@ -1,4 +1,4 @@
-// Calendly-style booking widget: date → time → details + card payment (Square) → booked.
+// Calendly-style booking widget: date → time → details → Whop checkout (embedded) → confirmed.
 // Dates, times and seats come from /api/availability (set in admin.html).
 // Usage:
 //   initBooking({ containerId: 'booking', workshop: 'beginners' });
@@ -35,7 +35,6 @@ function initBooking(opts) {
       if (!res.ok) throw new Error(data.error || 'Could not load availability.');
       opts.name = data.name;
       opts.price = data.price;
-      opts.square = data.square;
       // Keep the price text elsewhere on the page in step with the admin price.
       document.querySelectorAll('[data-price]').forEach(el => {
         el.textContent = `$${Number(data.price) % 1 ? Number(data.price).toFixed(2) : data.price}`;
@@ -77,9 +76,9 @@ function initBooking(opts) {
   }
 
   function steps() {
-    const order = ['date', 'time', 'details'];
-    const labels = ['Date', 'Time', 'Details'];
-    const idx = state.step === 'done' ? 3 : order.indexOf(state.step);
+    const order = ['date', 'time', 'details', 'pay'];
+    const labels = ['Date', 'Time', 'Details', 'Payment'];
+    const idx = state.step === 'done' ? 4 : order.indexOf(state.step);
     return `<ol class="bk-steps">${labels.map((l, i) =>
       `<li class="${i < idx ? 'done' : i === idx ? 'active' : ''}">${i + 1}. ${l}</li>`).join('')}</ol>`;
   }
@@ -158,24 +157,96 @@ function initBooking(opts) {
         <label>Full name<input name="name" type="text" autocomplete="name" required value="${esc(d.name)}" /></label>
         <label>Email<input name="email" type="email" autocomplete="email" required value="${esc(d.email)}" /></label>
         <label>Phone<input name="phone" type="tel" autocomplete="tel" required value="${esc(d.phone)}" /></label>
-        <div class="bk-card-label">Card details</div>
-        <div id="bk-card" class="bk-card"><p class="bk-sub">Loading secure card form…</p></div>
-        <p class="bk-error" role="alert" ${state.error ? '' : 'hidden'}>${esc(state.error)}</p>
-        <button type="submit" class="btn-solid bk-submit">Pay $${Number(opts.price).toFixed(2)} &amp; Book</button>
-        <p class="bk-secure">Payments are processed securely by Square.</p>
+        ${state.error ? `<p class="bk-error" role="alert">${esc(state.error)}</p>` : ''}
+        <button type="submit" class="btn-solid bk-submit" ${state.submitting ? 'disabled' : ''}>
+          ${state.submitting ? 'Please wait…' : 'Continue to payment'}
+        </button>
       </form>
     `;
   }
 
+  function renderPay() {
+    const c = state.checkout;
+    return `
+      <button type="button" class="bk-back" data-back="details">&#8249; Back</button>
+      <p class="bk-heading">Payment</p>
+      ${summary()}
+      <div class="bk-whop" id="bk-whop"
+        data-whop-checkout-plan-id="${esc(c.planId)}"
+        data-whop-checkout-session="${esc(c.sessionId)}"
+        data-whop-checkout-return-url="${esc(c.returnUrl)}"
+        data-whop-checkout-theme="light"
+        data-whop-checkout-prefill-email="${esc(state.details.email)}"></div>
+      <p class="bk-secure">Your spot is held for 30 minutes while you pay.${c.purchaseUrl
+        ? ` Checkout not showing? <a href="${esc(c.purchaseUrl)}">Pay on Whop's secure page</a>.` : ''}</p>
+    `;
+  }
+
+  // Whop's loader turns #bk-whop into the embedded checkout. Re-run it for each new checkout.
+  function mountWhop() {
+    const old = document.getElementById('whop-checkout-loader');
+    if (old) old.remove();
+    const s = document.createElement('script');
+    s.id = 'whop-checkout-loader';
+    s.async = true;
+    s.src = 'https://js.whop.com/static/checkout/loader.js';
+    document.body.appendChild(s);
+  }
+
+  // Poll until the Whop webhook has confirmed the payment.
+  let pollId = 0;
+  async function waitForPayment(id) {
+    const mine = ++pollId;
+    for (let i = 0; i < 600 && mine === pollId; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      if (mine !== pollId || !['pay', 'done'].includes(state.step)) return;
+      try {
+        const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.status === 'paid') {
+          state.paymentStatus = 'paid';
+          state.step = 'done';
+          render();
+          load(false);
+          return;
+        }
+      } catch { /* keep waiting */ }
+    }
+  }
+
   function renderDone() {
+    const paid = state.paymentStatus === 'paid';
     return `
       <div class="bk-done">
-        <p class="bk-heading">You're booked in</p>
-        <p class="bk-sub">Payment received. A confirmation has been sent to <strong>${esc(state.details.email)}</strong>.</p>
+        <p class="bk-heading">${paid ? "You're booked in" : 'Confirming your payment…'}</p>
+        <p class="bk-sub">${paid
+          ? `Payment received. A confirmation has been sent to <strong>${esc(state.details.email)}</strong>.`
+          : `This usually takes a few seconds. Your confirmation email will go to <strong>${esc(state.details.email)}</strong>.`}</p>
         ${summary()}
         <button type="button" class="btn-outline bk-again" data-restart>Book another spot</button>
       </div>
     `;
+  }
+
+  // Customer is back from Whop checkout: show the booking and wait for the payment webhook.
+  async function showReturn(id) {
+    try {
+      const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return false;
+      opts.name = data.workshop;
+      opts.price = data.price;
+      state.date = data.date;
+      state.time = data.time;
+      state.details.email = data.email;
+      state.paymentStatus = data.status;
+      state.step = 'done';
+      render();
+      if (data.status !== 'paid') waitForPayment(id);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function renderLoading() {
@@ -186,97 +257,16 @@ function initBooking(opts) {
   }
 
   function render() {
-    unmountCard();
     const body = {
       loading: renderLoading,
       date: renderDate,
       time: renderTime,
       details: renderDetails,
+      pay: renderPay,
       done: renderDone,
     }[state.step]();
     root.innerHTML = steps() + `<div class="bk-body">${body}</div>`;
-    if (state.step === 'details') mountCard();
-  }
-
-  // --- Square card field ----------------------------------------------------
-  // The card number is typed into Square's secure iframe and never reaches our server.
-  let payments = null;
-  let card = null;
-  let sdkPromise = null;
-
-  const CARD_STYLE = {
-    '.input-container': { borderColor: 'rgba(0, 0, 0, 0.15)', borderRadius: '0px' },
-    '.input-container.is-focus': { borderColor: '#7a5c3e' },
-    '.input-container.is-error': { borderColor: '#a33a2a' },
-    'input': { color: '#3a3530', fontSize: '15px' },
-    'input::placeholder': { color: '#9a8f87' },
-    '.message-text': { color: '#6b6059' },
-    '.message-icon': { color: '#6b6059' },
-    '.message-text.is-error': { color: '#a33a2a' },
-    '.message-icon.is-error': { color: '#a33a2a' },
-  };
-
-  function loadSdk(env) {
-    if (window.Square) return Promise.resolve();
-    if (!sdkPromise) {
-      sdkPromise = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = env === 'production'
-          ? 'https://web.squarecdn.com/v1/square.js'
-          : 'https://sandbox.web.squarecdn.com/v1/square.js';
-        s.onload = resolve;
-        s.onerror = () => { sdkPromise = null; reject(new Error('Could not load the card form.')); };
-        document.head.appendChild(s);
-      });
-    }
-    return sdkPromise;
-  }
-
-  async function mountCard() {
-    const host = root.querySelector('#bk-card');
-    try {
-      if (!opts.square) throw new Error('Card payments are not set up yet.');
-      await loadSdk(opts.square.environment);
-      payments = payments || window.Square.payments(opts.square.applicationId, opts.square.locationId);
-      let c;
-      try {
-        c = await payments.card({ style: CARD_STYLE });
-      } catch {
-        c = await payments.card(); // fall back to Square's default look
-      }
-      if (!host.isConnected) return c.destroy();
-      host.innerHTML = '';
-      await c.attach(host);
-      card = c;
-    } catch (err) {
-      console.error(err);
-      host.innerHTML = '';
-      showError(`${err.message || 'Could not load the card form.'} Please email ebonyfortunatow@gmail.com to book.`);
-    }
-  }
-
-  function unmountCard() {
-    if (card) card.destroy().catch(() => {});
-    card = null;
-  }
-
-  // Update the details form in place (re-rendering would reset the card field).
-  function showError(msg) {
-    state.error = msg;
-    const el = root.querySelector('.bk-form .bk-error');
-    if (el) {
-      el.textContent = msg;
-      el.hidden = !msg;
-    }
-  }
-
-  function setSubmitting(on) {
-    state.submitting = on;
-    const btn = root.querySelector('.bk-submit');
-    if (btn) {
-      btn.disabled = on;
-      btn.innerHTML = on ? 'Processing payment…' : `Pay $${Number(opts.price).toFixed(2)} &amp; Book`;
-    }
+    if (state.step === 'pay') mountWhop();
   }
 
   function validate(d) {
@@ -287,26 +277,18 @@ function initBooking(opts) {
   }
 
   async function submit(form) {
-    if (state.submitting) return;
     const fd = new FormData(form);
     state.details = {
       name: fd.get('name') || '',
       email: fd.get('email') || '',
       phone: fd.get('phone') || '',
     };
-    const invalid = validate(state.details);
-    if (invalid) return showError(invalid);
-    if (!card) return showError('The card form has not loaded yet. Please wait a moment and try again.');
+    state.error = validate(state.details);
+    if (state.error) return render();
 
-    showError('');
-    setSubmitting(true);
+    state.submitting = true;
+    render();
     try {
-      const result = await card.tokenize();
-      if (result.status !== 'OK') {
-        const msg = (result.errors || []).map(e => e.message).filter(Boolean)[0];
-        throw new Error(msg || 'Please check your card details.');
-      }
-
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -317,30 +299,28 @@ function initBooking(opts) {
           name: state.details.name.trim(),
           email: state.details.email.trim(),
           phone: state.details.phone.trim(),
-          sourceId: result.token,
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 409) {
-        // Session filled up or closed: back to the time list with fresh availability.
-        await load(false);
-        state.submitting = false;
-        state.step = 'time';
-        state.time = null;
-        state.error = data.error || 'That session is no longer available.';
-        return render();
+      if (!res.ok) {
+        if (res.status === 409) {
+          await load(false);
+          state.step = 'time';
+          state.time = null;
+        }
+        throw new Error(data.error || 'Something went wrong. Please try again.');
       }
-      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
-
       state.submitting = false;
-      state.step = 'done';
+      state.checkout = data;
+      state.step = 'pay';
       render();
-      load(false);
+      waitForPayment(data.bookingId);
     } catch (err) {
-      setSubmitting(false);
-      showError(err.message === 'Failed to fetch'
+      state.submitting = false;
+      state.error = err.message === 'Failed to fetch'
         ? 'Could not reach the booking server. Please try again.'
-        : err.message);
+        : err.message;
+      render();
     }
   }
 
@@ -362,10 +342,12 @@ function initBooking(opts) {
       state.error = '';
       render();
     } else if (t.dataset.back) {
+      pollId++;
       state.step = t.dataset.back;
       state.error = '';
       render();
     } else if ('restart' in t.dataset) {
+      if (bookingId) history.replaceState(null, '', location.pathname + '#book');
       state.step = 'date';
       state.date = null;
       state.time = null;
@@ -378,8 +360,11 @@ function initBooking(opts) {
     submit(e.target);
   });
 
+  const bookingId = new URLSearchParams(location.search).get('booking');
+
   render();
-  load(true).then(() => {
+  load(true).then(async () => {
+    if (bookingId && await showReturn(bookingId)) return;
     if (!state.loadError) state.step = 'date';
     render();
   });

@@ -1,13 +1,22 @@
-// POST /api/book — charges the card (Square) and confirms the booking.
-// Reserves a seat, takes payment with the card token from the booking page,
-// then records the booking and emails the customer and the studio.
+// POST /api/book — holds a seat and creates a Whop checkout for it.
+// The seat is held for 30 minutes; the booking is confirmed (and emails sent)
+// by /api/whop-webhook once Whop reports payment.succeeded.
 
 const crypto = require('crypto');
 const {
   redis, storageConfigured, getConfig, todayIso, seatsFor, readBody,
+  releaseExpiredHolds, createHold, KEEP_SECONDS,
 } = require('./_lib/store');
-const { squareConfigured, chargeCard } = require('./_lib/square');
-const { sendBookingEmails } = require('./_lib/emails');
+const { whopConfigured, createCheckout } = require('./_lib/whop');
+
+// Page each workshop's booking widget lives on (customers return here after paying).
+const PAGES = {
+  'beginners': 'workshop-beginners.html',
+  '6-week': 'workshop-6-week.html',
+  'dinner-set': 'workshop-dinner-set.html',
+  'serving-ware': 'workshop-serving-ware.html',
+  'vases': 'workshop-vases.html',
+};
 
 function validate(b) {
   const str = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -17,8 +26,13 @@ function validate(b) {
   if (!str(b.name, 120)) return 'Please enter your name.';
   if (!str(b.email, 200) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email.trim())) return 'Please enter a valid email address.';
   if (!str(b.phone, 40) || b.phone.replace(/\D/g, '').length < 8) return 'Please enter a valid phone number.';
-  if (!str(b.sourceId, 500)) return 'Please enter your card details.';
   return '';
+}
+
+function siteOrigin(req) {
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  return `${proto}://${host}`;
 }
 
 module.exports = async function handler(req, res) {
@@ -33,8 +47,8 @@ module.exports = async function handler(req, res) {
   const error = validate(body);
   if (error) return res.status(400).json({ error });
 
-  if (!storageConfigured() || !squareConfigured()) {
-    console.error('Booking unavailable: storage or Square env vars missing');
+  if (!storageConfigured() || !whopConfigured()) {
+    console.error('Booking unavailable: storage or Whop env vars missing');
     return res.status(503).json({ error: 'Online booking is not set up yet.' });
   }
 
@@ -44,6 +58,7 @@ module.exports = async function handler(req, res) {
 
   let workshop;
   try {
+    await releaseExpiredHolds();
     workshop = (await getConfig()).workshops[slug];
   } catch (err) {
     console.error('config load failed', err);
@@ -57,7 +72,7 @@ module.exports = async function handler(req, res) {
     return res.status(409).json({ error: 'This workshop is not open for online payment. Please email the studio to book.' });
   }
 
-  // Reserve a seat atomically; roll back if the session is full or payment fails.
+  // Reserve a seat atomically; roll back if the session is full.
   const seatKey = `booked:${slug}`;
   const field = `${date}|${time}`;
   const seats = seatsFor(workshop, date);
@@ -74,7 +89,9 @@ module.exports = async function handler(req, res) {
     return res.status(409).json({ error: 'Sorry, that session just filled up. Please pick another time.' });
   }
 
-  const b = {
+  const id = crypto.randomBytes(16).toString('hex');
+  const hold = {
+    slug,
     workshop: workshop.name,
     date,
     time,
@@ -82,37 +99,32 @@ module.exports = async function handler(req, res) {
     name: body.name.trim(),
     email: body.email.trim(),
     phone: body.phone.trim(),
-  };
-
-  let payment;
-  try {
-    payment = await chargeCard({
-      sourceId: body.sourceId,
-      idempotencyKey: crypto.randomUUID(),
-      price: b.price,
-      email: b.email,
-      note: `${b.workshop} – ${date} ${time} – ${b.name}`,
-    });
-  } catch (err) {
-    console.error('payment failed', err);
-    await release();
-    return res.status(402).json({ error: err.userMessage || 'We could not process your payment. Please try again.' });
-  }
-
-  const record = {
-    ...b, slug,
-    notes: `Paid $${Number(b.price).toFixed(2)} via Square`,
-    paid: true, paymentId: payment.id, source: 'square',
     createdAt: new Date().toISOString(),
   };
-  await redis(['RPUSH', `bookings:${slug}`, JSON.stringify(record)])
-    .catch(e => console.error('booking record failed — PAID booking not saved:', JSON.stringify(record), e));
 
   try {
-    await sendBookingEmails(b);
+    const page = PAGES[slug] || 'workshops.html';
+    const returnUrl = `${siteOrigin(req)}/${page}?booking=${id}#book`;
+    const checkout = await createCheckout({
+      bookingId: id,
+      title: `${workshop.name} – ${date} ${time}`,
+      price: workshop.price,
+      redirectUrl: returnUrl,
+    });
+    await createHold(id, { ...hold, planId: checkout.planId, sessionId: checkout.sessionId });
+    await redis(['SET', `plan:${checkout.planId}`, id, 'EX', KEEP_SECONDS]);
+    return res.status(200).json({
+      ok: true,
+      bookingId: id,
+      planId: checkout.planId,
+      sessionId: checkout.sessionId,
+      purchaseUrl: checkout.purchaseUrl,
+      returnUrl,
+    });
   } catch (err) {
-    // Payment went through and the seat is booked; don't report failure to the customer.
-    console.error('booking emails failed', err);
+    console.error('Whop checkout creation failed', err);
+    await release();
+    const detail = err.whopMessage ? ` (Whop: ${err.whopMessage})` : '';
+    return res.status(502).json({ error: `We could not start the payment${detail}. Please try again or email ebonyfortunatow@gmail.com.` });
   }
-  return res.status(200).json({ ok: true });
 };

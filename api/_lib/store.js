@@ -89,7 +89,34 @@ function readBody(req) {
   return body && typeof body === 'object' ? body : null;
 }
 
+// --- Seat holds while a customer pays on Whop -------------------------------
+// hold:<id>   pending booking JSON (kept 7 days so late payments still match)
+// holds       sorted set of hold ids, scored by when the hold expires
+// plan:<id>   Whop plan id -> hold id (each booking gets its own one-time plan)
+// paid:<id>   set once the payment is confirmed (stops double-processing)
+
+const HOLD_MINUTES = 30;
+const KEEP_SECONDS = 7 * 24 * 60 * 60;
+
+// Releases the seat of every unpaid hold past its expiry.
+async function releaseExpiredHolds() {
+  const [ids] = await redis(['ZRANGEBYSCORE', 'holds', 0, Date.now(), 'LIMIT', 0, 50]);
+  for (const id of ids || []) {
+    const [removed, raw] = await redis(['ZREM', 'holds', id], ['GET', `hold:${id}`]);
+    if (removed !== 1 || !raw) continue; // someone else (or the webhook) got there first
+    const h = JSON.parse(raw);
+    await redis(['HINCRBY', `booked:${h.slug}`, `${h.date}|${h.time}`, -1]);
+  }
+}
+
+async function createHold(id, hold) {
+  await redis(
+    ['SET', `hold:${id}`, JSON.stringify(hold), 'EX', KEEP_SECONDS],
+    ['ZADD', 'holds', Date.now() + HOLD_MINUTES * 60 * 1000, id],
+  );
+}
+
 module.exports = {
   WORKSHOPS, redis, storageConfigured, getConfig, saveConfig, getBookedCounts,
-  todayIso, seatsFor, readBody,
+  todayIso, seatsFor, readBody, releaseExpiredHolds, createHold, KEEP_SECONDS,
 };
