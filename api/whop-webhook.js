@@ -1,6 +1,7 @@
 // POST /api/whop-webhook — Whop calls this when a payment succeeds.
-// Confirms the held booking, adds it to the admin bookings list and sends the
-// confirmation emails.
+// Confirms the held booking, adds it to the admin bookings list and tells the
+// studio. The customer adds their name/email/phone on the thank-you page
+// (/api/booking-details), which sends their confirmation email.
 //
 // Whop dashboard → Developer → Webhooks:
 //   URL:   https://<your site>/api/whop-webhook
@@ -9,12 +10,25 @@
 
 const { redis, getConfig, seatsFor, KEEP_SECONDS } = require('./_lib/store');
 const { verifyWebhook } = require('./_lib/whop');
-const { sendBookingEmails } = require('./_lib/emails');
+const { studioNotification, sendEmails } = require('./_lib/emails');
 
 async function rawBody(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
   return Buffer.concat(chunks).toString('utf8');
+}
+
+// Whatever contact details Whop collected at checkout (field names vary by API version).
+function whopContact(payment) {
+  const pick = (...vals) => vals.find(v => typeof v === 'string' && v.trim()) || '';
+  const user = payment.user || {};
+  const member = payment.member || {};
+  const billing = payment.billing_address || payment.billing_details || {};
+  return {
+    name: pick(billing.name, user.name, member.name, user.username).trim(),
+    email: pick(payment.email, user.email, member.email, billing.email).trim(),
+    phone: pick(member.phone, payment.phone, billing.phone).trim(),
+  };
 }
 
 // Find our booking id on the payment: metadata first, then the per-booking plan.
@@ -78,20 +92,27 @@ module.exports = async function handler(req, res) {
     }
 
     const paid = Number(h.price); // the checkout was created at exactly this price
+    const fromWhop = whopContact(payment);
     const record = {
       workshop: h.workshop, date: h.date, time: h.time, price: h.price,
-      name: h.name, email: h.email, phone: h.phone,
-      notes: `Paid $${paid.toFixed(2)} via Whop`,
-      paid: true, paymentId: payment.id, source: 'whop',
+      name: h.name || fromWhop.name, email: h.email || fromWhop.email, phone: h.phone || fromWhop.phone,
+      notes: `Paid $${paid.toFixed(2)} via Whop — awaiting customer details`,
+      paid: true, paymentId: payment.id, source: 'whop', detailsComplete: false,
       slug: h.slug, createdAt: h.createdAt, paidAt: new Date().toISOString(),
     };
-    await redis(['RPUSH', `bookings:${h.slug}`, JSON.stringify(record)]);
+    const [length] = await redis(['RPUSH', `bookings:${h.slug}`, JSON.stringify(record)]);
+    // Remember where the record lives so /api/booking-details can fill it in.
+    await redis(['SET', `record:${id}`, JSON.stringify({ slug: h.slug, index: length - 1 }), 'EX', KEEP_SECONDS]);
 
     try {
-      await sendBookingEmails({ ...h, price: paid }, studioNote);
+      await sendEmails([studioNotification(record, {
+        title: 'New paid booking',
+        note: [studioNote, 'The customer is entering their name, email and phone now — you\'ll get a second email when they do.']
+          .filter(Boolean).join(' '),
+      })]);
     } catch (err) {
       // The booking is paid and recorded; don't make Whop retry over an email failure.
-      console.error('booking emails failed for', id, err);
+      console.error('studio email failed for', id, err);
     }
     return res.status(200).json({ ok: true });
   } catch (err) {

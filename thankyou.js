@@ -1,5 +1,6 @@
-// Thank-you page: shows the booking (/thankyou?booking=<id>), waits for the
-// payment to be confirmed, then offers Google / Outlook / Apple calendar links.
+// Thank-you page (/thankyou?booking=<id>): waits for the payment to be confirmed,
+// asks for the customer's name, email and phone, then shows the booking with
+// Google / Outlook / Apple calendar links.
 (function () {
   const root = document.getElementById('thankyou');
   if (!root) return;
@@ -148,7 +149,7 @@
         <div><span>Date</span><p>${longDate(b.date)}${b.slug === '6-week' ? ' (weekly for 6 weeks)' : ''}</p></div>
         <div><span>Time</span><p>${esc(b.time)}</p></div>
         <div><span>Location</span><p>${esc(LOCATION)}</p></div>
-        <div><span>Name</span><p>${esc(b.name || '')}</p></div>
+        ${b.name ? `<div><span>Name</span><p>${esc(b.name)}</p></div>` : ''}
         <div><span>Paid</span><p>$${Number(b.price).toFixed(2)}</p></div>
       </div>`;
   }
@@ -170,7 +171,60 @@
       <p class="ty-note">All clay and tools are provided — just wear something you don't mind getting messy.
         Questions? Email <a href="mailto:ebonyfortunatow@gmail.com">ebonyfortunatow@gmail.com</a>.</p>
       <a class="ty-back" href="workshops.html">&#8249; Back to workshops</a>`;
-    trackPurchase(b);
+  }
+
+  function renderDetailsForm(b, error = '', busy = false) {
+    root.innerHTML = `
+      <p class="ty-label">PAYMENT RECEIVED</p>
+      <h1>One last step</h1>
+      <p class="ty-lead">Your spot is paid for. Add your details so we can send your confirmation and contact you about the workshop.</p>
+      ${summary({ ...b, name: '' })}
+      <form class="bk-form ty-form" novalidate>
+        <label>Full name<input name="name" type="text" autocomplete="name" required value="${esc(b.name || '')}" /></label>
+        <label>Email<input name="email" type="email" autocomplete="email" required value="${esc(b.email || '')}" /></label>
+        <label>Phone<input name="phone" type="tel" autocomplete="tel" required value="${esc(b.phone || '')}" /></label>
+        ${error ? `<p class="bk-error" role="alert">${esc(error)}</p>` : ''}
+        <button type="submit" class="btn-solid bk-submit" ${busy ? 'disabled' : ''}>${busy ? 'Saving…' : 'Confirm my booking'}</button>
+      </form>`;
+    root.querySelector('form').addEventListener('submit', e => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      submitDetails(b, {
+        name: String(fd.get('name') || '').trim(),
+        email: String(fd.get('email') || '').trim(),
+        phone: String(fd.get('phone') || '').trim(),
+      });
+    });
+  }
+
+  function checkDetails(d) {
+    if (!d.name) return 'Please enter your name.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return 'Please enter a valid email address.';
+    if (d.phone.replace(/\D/g, '').length < 8) return 'Please enter a valid phone number.';
+    return '';
+  }
+
+  async function submitDetails(b, d) {
+    const form = { ...b, ...d };
+    const invalid = checkDetails(d);
+    if (invalid) return renderDetailsForm(form, invalid);
+    renderDetailsForm(form, '', true);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const res = await fetch('/api/booking-details', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, ...d }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) return renderPaid(form);
+        if (res.status !== 409) return renderDetailsForm(form, data.error || 'Something went wrong. Please try again.');
+      } catch {
+        if (attempt === 4) return renderDetailsForm(form, 'Could not reach the booking server. Please try again.');
+      }
+      await new Promise(r => setTimeout(r, 2000)); // payment still being confirmed
+    }
+    renderDetailsForm(form, 'Your payment is still being confirmed. Please try again in a moment.');
   }
 
   function renderPending(b) {
@@ -197,7 +251,10 @@
         const data = await res.json().catch(() => ({}));
         if (res.status === 404 || res.status === 400) return renderError('This booking link has expired or is not valid.');
         if (res.ok) {
-          if (data.status === 'paid') return renderPaid(data);
+          if (data.status === 'paid') {
+            trackPurchase(data);
+            return data.detailsComplete ? renderPaid(data) : renderDetailsForm(data);
+          }
           renderPending(data);
         }
       } catch { /* network blip: keep trying */ }

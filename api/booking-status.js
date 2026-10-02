@@ -13,13 +13,25 @@ module.exports = async function handler(req, res) {
   if (!storageConfigured()) return res.status(503).json({ error: 'Online booking is not set up yet.' });
 
   try {
-    const [raw, paid] = await redis(['GET', `hold:${id}`], ['GET', `paid:${id}`]);
+    const [raw, record, details] = await redis(
+      ['GET', `hold:${id}`], ['GET', `record:${id}`], ['GET', `details:${id}`],
+    );
     if (!raw) return res.status(404).json({ error: 'Booking not found.' });
     const h = JSON.parse(raw);
+    // "paid" once the webhook has saved the booking; detailsComplete once the
+    // customer has entered their name/email/phone.
+    let contact = {};
+    if (record && !details) {
+      const { slug, index } = JSON.parse(record);
+      const [b] = await redis(['LINDEX', `bookings:${slug}`, index]);
+      if (b) { const r = JSON.parse(b); contact = { name: r.name, email: r.email, phone: r.phone }; }
+    }
     return res.status(200).json({
-      status: paid ? 'paid' : 'pending',
+      status: record ? 'paid' : 'pending',
+      detailsComplete: !!details,
+      ...contact,
       slug: h.slug, workshop: h.workshop, date: h.date, time: h.time, price: h.price,
-      name: h.name, email: h.email,
+      name: h.name || contact.name || '', email: h.email || contact.email || '',
     });
   } catch (err) {
     console.error('booking status failed', err);

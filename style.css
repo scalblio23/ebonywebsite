@@ -1198,3 +1198,4 @@ body.bk-modal-open { overflow: hidden; }
   .ty h1 { font-size: 28px; }
   .ty-actions { grid-template-columns: 1fr; }
 }
+.ty-form { margin-top: 4px; }

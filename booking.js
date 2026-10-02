@@ -1,4 +1,5 @@
-// Calendly-style booking widget: date → time → details → Whop checkout (embedded) → confirmed.
+// Calendly-style booking widget: date → time → Whop checkout (embedded) → thank-you page,
+// where the customer adds their name, email and phone.
 // Dates, times and seats come from /api/availability (set in admin.html).
 // Usage:
 //   initBooking({ containerId: 'booking', workshop: 'beginners' });
@@ -23,9 +24,7 @@ function initBooking(opts) {
     month: new Date(today.getFullYear(), today.getMonth(), 1),
     date: null,
     time: null,
-    details: { name: '', email: '', phone: '' },
     error: '',
-    submitting: false,
   };
 
   async function load(moveToFirst) {
@@ -90,9 +89,9 @@ function initBooking(opts) {
 
 
   function steps() {
-    const order = ['date', 'time', 'details', 'pay'];
-    const labels = ['Date', 'Time', 'Details', 'Payment'];
-    const idx = state.step === 'done' ? 4 : order.indexOf(state.step);
+    const order = ['date', 'time', 'pay'];
+    const labels = ['Date', 'Time', 'Payment'];
+    const idx = order.indexOf(state.step);
     return `<ol class="bk-steps">${labels.map((l, i) =>
       `<li class="${i < idx ? 'done' : i === idx ? 'active' : ''}">${i + 1}. ${l}</li>`).join('')}</ol>`;
   }
@@ -161,28 +160,16 @@ function initBooking(opts) {
     `;
   }
 
-  function renderDetails() {
-    const d = state.details;
-    return `
-      <button type="button" class="bk-back" data-back="time">&#8249; Back</button>
-      <p class="bk-heading">Your details</p>
-      ${summary()}
-      <form class="bk-form" novalidate>
-        <label>Full name<input name="name" type="text" autocomplete="name" required value="${esc(d.name)}" /></label>
-        <label>Email<input name="email" type="email" autocomplete="email" required value="${esc(d.email)}" /></label>
-        <label>Phone<input name="phone" type="tel" autocomplete="tel" required value="${esc(d.phone)}" /></label>
-        ${state.error ? `<p class="bk-error" role="alert">${esc(state.error)}</p>` : ''}
-        <button type="submit" class="btn-solid bk-submit" ${state.submitting ? 'disabled' : ''}>
-          ${state.submitting ? 'Please wait…' : 'Continue to payment'}
-        </button>
-      </form>
-    `;
-  }
-
   function renderPay() {
     const c = state.checkout;
+    if (!c) {
+      return `
+        <p class="bk-heading">Payment</p>
+        ${summary()}
+        <p class="bk-sub">Preparing secure checkout…</p>`;
+    }
     return `
-      <button type="button" class="bk-back" data-back="details">&#8249; Back</button>
+      <button type="button" class="bk-back" data-back="time">&#8249; Change time</button>
       <p class="bk-heading">Payment</p>
       ${summary()}
       <div class="bk-whop" id="bk-whop"
@@ -190,8 +177,6 @@ function initBooking(opts) {
         data-whop-checkout-session="${esc(c.sessionId)}"
         data-whop-checkout-return-url="${esc(c.returnUrl)}"
         data-whop-checkout-theme="light"
-        data-whop-checkout-prefill-email="${esc(state.details.email)}"
-        data-whop-checkout-prefill-name="${esc(state.details.name)}"
         data-whop-checkout-prefill-address-country="AU"></div>
       <p class="bk-secure">Your spot is held for 30 minutes while you pay.${c.purchaseUrl
         ? ` Checkout not showing? <a href="${esc(c.purchaseUrl)}">Pay on Whop's secure page</a>.` : ''}</p>
@@ -215,7 +200,7 @@ function initBooking(opts) {
     const mine = ++pollId;
     for (let i = 0; i < 600 && mine === pollId; i++) {
       await new Promise(r => setTimeout(r, 3000));
-      if (mine !== pollId || !['pay', 'done'].includes(state.step)) return;
+      if (mine !== pollId || state.step !== 'pay') return;
       try {
         const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
         const data = await res.json().catch(() => ({}));
@@ -225,20 +210,6 @@ function initBooking(opts) {
         }
       } catch { /* keep waiting */ }
     }
-  }
-
-  function renderDone() {
-    const paid = state.paymentStatus === 'paid';
-    return `
-      <div class="bk-done">
-        <p class="bk-heading">${paid ? "You're booked in" : 'Confirming your payment…'}</p>
-        <p class="bk-sub">${paid
-          ? `Payment received. A confirmation has been sent to <strong>${esc(state.details.email)}</strong>.`
-          : `This usually takes a few seconds. Your confirmation email will go to <strong>${esc(state.details.email)}</strong>.`}</p>
-        ${summary()}
-        <button type="button" class="btn-outline bk-again" data-restart>Book another spot</button>
-      </div>
-    `;
   }
 
   // Older return links (?booking=<id> on a workshop page) go to the thank-you page.
@@ -259,63 +230,37 @@ function initBooking(opts) {
       loading: renderLoading,
       date: renderDate,
       time: renderTime,
-      details: renderDetails,
       pay: renderPay,
-      done: renderDone,
     }[state.step]();
     root.innerHTML = steps() + `<div class="bk-body">${body}</div>`;
-    if (state.step === 'pay') mountWhop();
+    if (state.step === 'pay' && state.checkout) mountWhop();
   }
 
-  function validate(d) {
-    if (!d.name.trim()) return 'Please enter your name.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim())) return 'Please enter a valid email address.';
-    if (d.phone.replace(/\D/g, '').length < 8) return 'Please enter a valid phone number.';
-    return '';
-  }
-
-  async function submit(form) {
-    const fd = new FormData(form);
-    state.details = {
-      name: fd.get('name') || '',
-      email: fd.get('email') || '',
-      phone: fd.get('phone') || '',
-    };
-    state.error = validate(state.details);
-    if (state.error) return render();
-
-    state.submitting = true;
+  // Picking a time goes straight to payment: hold the seat and create the checkout.
+  async function startCheckout() {
+    state.checkout = null;
+    state.error = '';
+    state.step = 'pay';
     render();
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workshop: opts.workshop,
-          date: state.date,
-          time: state.time,
-          name: state.details.name.trim(),
-          email: state.details.email.trim(),
-          phone: state.details.phone.trim(),
-        }),
+        body: JSON.stringify({ workshop: opts.workshop, date: state.date, time: state.time }),
       });
       const data = await res.json().catch(() => ({}));
+      if (state.step !== 'pay') return; // customer went back while we were waiting
       if (!res.ok) {
-        if (res.status === 409) {
-          await load(false);
-          state.step = 'time';
-          state.time = null;
-        }
+        if (res.status === 409) await load(false);
         throw new Error(data.error || 'Something went wrong. Please try again.');
       }
-      state.submitting = false;
       state.checkout = data;
-      state.step = 'pay';
       render();
       track('InitiateCheckout', { num_items: 1 }, `${data.bookingId}-checkout`);
       waitForPayment(data.bookingId);
     } catch (err) {
-      state.submitting = false;
+      state.step = 'time';
+      state.time = null;
       state.error = err.message === 'Failed to fetch'
         ? 'Could not reach the booking server. Please try again.'
         : err.message;
@@ -337,26 +282,22 @@ function initBooking(opts) {
       render();
     } else if (t.dataset.time) {
       state.time = t.dataset.time;
-      state.step = 'details';
-      state.error = '';
-      render();
+      startCheckout();
     } else if (t.dataset.back) {
       pollId++;
+      if (state.checkout) {
+        // Free the seat held for the abandoned checkout.
+        fetch('/api/release-hold', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: state.checkout.bookingId }),
+        }).then(() => load(false)).then(() => { if (state.step === 'time') render(); }).catch(() => {});
+      }
+      state.checkout = null;
       state.step = t.dataset.back;
       state.error = '';
       render();
-    } else if ('restart' in t.dataset) {
-      if (bookingId) history.replaceState(null, '', location.pathname + '#book');
-      state.step = 'date';
-      state.date = null;
-      state.time = null;
-      render();
     }
-  });
-
-  root.addEventListener('submit', e => {
-    e.preventDefault();
-    submit(e.target);
   });
 
   const bookingId = new URLSearchParams(location.search).get('booking');

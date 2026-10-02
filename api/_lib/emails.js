@@ -46,40 +46,51 @@ function wrap(inner) {
     </div></div>`;
 }
 
-// b: { workshop, date, time, price, name, email, phone }; studioNote is added to the studio email only.
-async function sendBookingEmails(b, studioNote) {
+function senders() {
+  return {
+    from: process.env.BOOKING_FROM_EMAIL || 'Ebony Fortunatow <onboarding@resend.dev>',
+    studio: process.env.STUDIO_EMAIL || 'ebonyfortunatow@gmail.com',
+  };
+}
+
+// b: { workshop, date, time, price, name, email, phone }
+
+// Confirmation to the customer (sent once they've entered their details).
+function customerConfirmation(b) {
+  const { from, studio } = senders();
+  return {
+    from,
+    to: [b.email],
+    reply_to: studio,
+    subject: `Booking confirmed – ${b.workshop} – ${longDate(b.date)}, ${b.time}`,
+    html: wrap(`
+      <h2 style="font-weight:300;letter-spacing:.08em;color:#2a2520;margin:0 0 16px">You're booked in</h2>
+      <p style="font-size:14px;color:#6b6059;line-height:1.7">Hi ${esc((b.name || '').split(' ')[0])}, thanks for booking — your payment has been received. Here are your details:</p>
+      ${detailsTable(b)}
+      <p style="font-size:14px;color:#6b6059;line-height:1.7;margin-top:24px">All clay and tools are provided — just wear something you don't mind getting messy. Reply to this email if you have any questions.</p>
+    `),
+  };
+}
+
+// Notification to the studio. title/note let the webhook say "details to follow".
+function studioNotification(b, { title = 'New paid booking', note = '' } = {}) {
+  const { from } = senders();
+  return {
+    from,
+    to: [senders().studio],
+    ...(b.email ? { reply_to: b.email } : {}),
+    subject: `${title} – ${b.workshop} – ${longDate(b.date)}, ${b.time}${b.name ? ` – ${b.name}` : ''}`,
+    html: wrap(`
+      <h2 style="font-weight:300;letter-spacing:.08em;color:#2a2520;margin:0 0 16px">${esc(title)}</h2>
+      ${note ? `<p style="font-size:14px;color:#a33a2a;line-height:1.7">${esc(note)}</p>` : ''}
+      ${detailsTable(b)}
+    `),
+  };
+}
+
+async function sendEmails(emails) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error('RESEND_API_KEY is not set for this deployment');
-  const from = process.env.BOOKING_FROM_EMAIL || 'Ebony Fortunatow <onboarding@resend.dev>';
-  const studio = process.env.STUDIO_EMAIL || 'ebonyfortunatow@gmail.com';
-  const when = `${longDate(b.date)}, ${b.time}`;
-
-  const emails = [
-    {
-      from,
-      to: [b.email],
-      reply_to: studio,
-      subject: `Booking confirmed – ${b.workshop} – ${when}`,
-      html: wrap(`
-        <h2 style="font-weight:300;letter-spacing:.08em;color:#2a2520;margin:0 0 16px">You're booked in</h2>
-        <p style="font-size:14px;color:#6b6059;line-height:1.7">Hi ${esc(b.name.split(' ')[0])}, thanks for booking — your payment has been received. Here are your details:</p>
-        ${detailsTable(b)}
-        <p style="font-size:14px;color:#6b6059;line-height:1.7;margin-top:24px">All clay and tools are provided — just wear something you don't mind getting messy. Reply to this email if you have any questions.</p>
-      `),
-    },
-    {
-      from,
-      to: [studio],
-      reply_to: b.email,
-      subject: `New paid booking – ${b.workshop} – ${when} – ${b.name}`,
-      html: wrap(`
-        <h2 style="font-weight:300;letter-spacing:.08em;color:#2a2520;margin:0 0 16px">New paid booking</h2>
-        ${studioNote ? `<p style="font-size:14px;color:#a33a2a;line-height:1.7">${esc(studioNote)}</p>` : ''}
-        ${detailsTable(b)}
-      `),
-    },
-  ];
-
   const r = await fetch('https://api.resend.com/emails/batch', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -88,4 +99,4 @@ async function sendBookingEmails(b, studioNote) {
   if (!r.ok) throw new Error(`Resend error ${r.status}: ${await r.text()}`);
 }
 
-module.exports = { sendBookingEmails };
+module.exports = { customerConfirmation, studioNotification, sendEmails };

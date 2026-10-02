@@ -1,6 +1,6 @@
 // POST /api/book — holds a seat and creates a Whop checkout for it.
-// The seat is held for 30 minutes; the booking is confirmed (and emails sent)
-// by /api/whop-webhook once Whop reports payment.succeeded.
+// The seat is held for 30 minutes; /api/whop-webhook confirms it once Whop reports
+// payment.succeeded, and the customer then adds their details (/api/booking-details).
 
 const crypto = require('crypto');
 const {
@@ -21,9 +21,6 @@ function validate(b) {
   if (!str(b.workshop, 40)) return 'Missing workshop.';
   if (typeof b.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return 'Invalid date.';
   if (!str(b.time, 60)) return 'Missing time.';
-  if (!str(b.name, 120)) return 'Please enter your name.';
-  if (!str(b.email, 200) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email.trim())) return 'Please enter a valid email address.';
-  if (!str(b.phone, 40) || b.phone.replace(/\D/g, '').length < 8) return 'Please enter a valid phone number.';
   return '';
 }
 
@@ -94,9 +91,10 @@ module.exports = async function handler(req, res) {
     date,
     time,
     price: workshop.price,
-    name: body.name.trim(),
-    email: body.email.trim(),
-    phone: body.phone.trim(),
+    // Contact details are collected after payment (/api/booking-details).
+    name: '',
+    email: '',
+    phone: '',
     createdAt: new Date().toISOString(),
   };
 
