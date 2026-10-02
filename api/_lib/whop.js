@@ -47,11 +47,26 @@ async function createCheckout({ bookingId, title, price, redirectUrl }) {
   };
   if (env('WHOP_PRODUCT_ID')) plan.product_id = env('WHOP_PRODUCT_ID');
 
-  const data = await whop('POST', '/checkout_configurations', {
+  const body = {
     plan,
     metadata: { booking_id: bookingId },
     redirect_url: redirectUrl,
-  });
+    // Cards and wallets only (no crypto, WeChat Pay, etc.).
+    payment_method_configuration: {
+      enabled: ['card', 'apple_pay', 'google_pay'],
+      disabled: ['crypto', 'wechat_pay'],
+    },
+  };
+  let data;
+  try {
+    data = await whop('POST', '/checkout_configurations', body);
+  } catch (err) {
+    // If Whop rejects the payment method list, still take the booking with its defaults.
+    if (!/payment.?method/i.test(err.whopMessage || '')) throw err;
+    console.error('Whop rejected payment_method_configuration; using defaults:', err.whopMessage);
+    delete body.payment_method_configuration;
+    data = await whop('POST', '/checkout_configurations', body);
+  }
   const planId = data.plan_id || (data.plan && data.plan.id);
   if (!data.id || !planId) throw new Error(`Whop checkout response missing id/plan: ${JSON.stringify(data).slice(0, 300)}`);
   return { sessionId: data.id, planId, purchaseUrl: data.purchase_url };

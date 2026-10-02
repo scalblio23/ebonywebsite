@@ -176,7 +176,10 @@ function initBooking(opts) {
         data-whop-checkout-session="${esc(c.sessionId)}"
         data-whop-checkout-return-url="${esc(c.returnUrl)}"
         data-whop-checkout-theme="light"
-        data-whop-checkout-prefill-email="${esc(state.details.email)}"></div>
+        data-whop-checkout-prefill-email="${esc(state.details.email)}"
+        data-whop-checkout-prefill-name="${esc(state.details.name)}"
+        data-whop-checkout-prefill-address-country="AU"
+        data-whop-checkout-hide-address="true"></div>
       <p class="bk-secure">Your spot is held for 30 minutes while you pay.${c.purchaseUrl
         ? ` Checkout not showing? <a href="${esc(c.purchaseUrl)}">Pay on Whop's secure page</a>.` : ''}</p>
     `;
