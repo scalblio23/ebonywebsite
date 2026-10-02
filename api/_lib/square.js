@@ -9,20 +9,23 @@
 
 const SQUARE_VERSION = '2024-10-17';
 
+// Trim pasted values: a stray space or line break makes Square reject the key.
+const env = name => (process.env[name] || '').trim();
+
 function squareConfigured() {
-  return !!(process.env.SQUARE_APPLICATION_ID && process.env.SQUARE_ACCESS_TOKEN && process.env.SQUARE_LOCATION_ID);
+  return !!(env('SQUARE_APPLICATION_ID') && env('SQUARE_ACCESS_TOKEN') && env('SQUARE_LOCATION_ID'));
 }
 
 function environment() {
-  return process.env.SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
+  return env('SQUARE_ENVIRONMENT').toLowerCase() === 'production' ? 'production' : 'sandbox';
 }
 
 // Safe to send to the browser: the card form needs these to load.
 function publicConfig() {
   if (!squareConfigured()) return null;
   return {
-    applicationId: process.env.SQUARE_APPLICATION_ID,
-    locationId: process.env.SQUARE_LOCATION_ID,
+    applicationId: env('SQUARE_APPLICATION_ID'),
+    locationId: env('SQUARE_LOCATION_ID'),
     environment: environment(),
   };
 }
@@ -32,7 +35,7 @@ async function square(method, path, body) {
   const r = await fetch(`${base}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${env('SQUARE_ACCESS_TOKEN')}`,
       'Square-Version': SQUARE_VERSION,
       'Content-Type': 'application/json',
     },
@@ -52,7 +55,7 @@ async function square(method, path, body) {
 let currency;
 async function locationCurrency() {
   if (!currency) {
-    const { location } = await square('GET', `/v2/locations/${encodeURIComponent(process.env.SQUARE_LOCATION_ID)}`);
+    const { location } = await square('GET', `/v2/locations/${encodeURIComponent(env('SQUARE_LOCATION_ID'))}`);
     currency = location.currency;
   }
   return currency;
@@ -85,7 +88,7 @@ async function chargeCard({ sourceId, idempotencyKey, price, email, note }) {
       source_id: sourceId,
       idempotency_key: idempotencyKey,
       amount_money: { amount: Math.round(price * 100), currency: await locationCurrency() },
-      location_id: process.env.SQUARE_LOCATION_ID,
+      location_id: env('SQUARE_LOCATION_ID'),
       buyer_email_address: email,
       note: note.slice(0, 500),
     });
