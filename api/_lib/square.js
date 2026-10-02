@@ -69,6 +69,12 @@ const CARD_MESSAGES = {
   CARD_EXPIRED: 'This card has expired. Please try another card.',
   CARD_NOT_SUPPORTED: 'This card type is not supported. Please try another card.',
   CARD_DECLINED_VERIFICATION_REQUIRED: 'Your bank needs to verify this payment. Please try another card.',
+  VERIFY_CVV_FAILURE: 'The security code (CVV) is incorrect. Please check and try again.',
+  VERIFY_AVS_FAILURE: 'The postcode does not match your card. Please check and try again.',
+  PAN_FAILURE: 'The card number is invalid. Please check and try again.',
+  EXPIRATION_FAILURE: 'The expiry date is invalid. Please check and try again.',
+  INVALID_ACCOUNT: 'This card is invalid. Please try another card.',
+  TRANSACTION_LIMIT: 'This payment exceeds your card limit. Please try another card.',
 };
 
 // Charges the card token. Returns the Square payment, or throws an error with
@@ -85,8 +91,13 @@ async function chargeCard({ sourceId, idempotencyKey, price, email, note }) {
     });
     return payment;
   } catch (err) {
-    const code = (err.squareErrors || []).map(e => e.code).find(c => CARD_MESSAGES[c]);
-    if (code) err.userMessage = CARD_MESSAGES[code];
+    const codes = (err.squareErrors || []).map(e => e.code);
+    const code = codes.find(c => CARD_MESSAGES[c]);
+    // Unknown problems (usually setup, e.g. mismatched sandbox/production keys) show
+    // Square's error code so it can be looked up.
+    err.userMessage = code
+      ? CARD_MESSAGES[code]
+      : `We could not process your payment${codes.length ? ` (Square: ${codes.join(', ')})` : ''}. Please try again or email ebonyfortunatow@gmail.com.`;
     throw err;
   }
 }
