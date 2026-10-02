@@ -75,6 +75,27 @@ function initBooking(opts) {
     }[c]));
   }
 
+  // Meta Pixel events (pixel.js). Purchase fires once per booking, keyed by
+  // booking id so a refresh or the return-from-Whop page doesn't count it twice.
+  function track(event, params, eventID) {
+    if (typeof window.fbq !== 'function') return;
+    window.fbq('track', event, {
+      content_name: opts.name,
+      content_ids: [opts.workshop],
+      content_type: 'product',
+      value: Number(opts.price) || 0,
+      currency: 'AUD',
+      ...params,
+    }, eventID ? { eventID } : undefined);
+  }
+
+  function trackPurchase(id) {
+    const key = `fbq-purchase-${id}`;
+    try { if (localStorage.getItem(key)) return; } catch { /* storage blocked */ }
+    track('Purchase', { num_items: 1 }, id);
+    try { localStorage.setItem(key, '1'); } catch { /* storage blocked */ }
+  }
+
   function steps() {
     const order = ['date', 'time', 'details', 'pay'];
     const labels = ['Date', 'Time', 'Details', 'Payment'];
@@ -206,6 +227,7 @@ function initBooking(opts) {
         const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.status === 'paid') {
+          trackPurchase(id);
           state.paymentStatus = 'paid';
           state.step = 'done';
           render();
@@ -244,7 +266,8 @@ function initBooking(opts) {
       state.paymentStatus = data.status;
       state.step = 'done';
       render();
-      if (data.status !== 'paid') waitForPayment(id);
+      if (data.status === 'paid') trackPurchase(id);
+      else waitForPayment(id);
       return true;
     } catch {
       return false;
@@ -316,6 +339,7 @@ function initBooking(opts) {
       state.checkout = data;
       state.step = 'pay';
       render();
+      track('InitiateCheckout', { num_items: 1 }, `${data.bookingId}-checkout`);
       waitForPayment(data.bookingId);
     } catch (err) {
       state.submitting = false;
@@ -366,6 +390,7 @@ function initBooking(opts) {
 
   render();
   load(true).then(async () => {
+    if (!state.loadError) track('ViewContent');
     if (bookingId && await showReturn(bookingId)) return;
     if (!state.loadError) state.step = 'date';
     render();
