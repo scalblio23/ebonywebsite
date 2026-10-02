@@ -18,6 +18,13 @@ const PAGES = {
   'vases': 'workshop-vases.html',
 };
 
+// Whop limits plan titles to 30 characters.
+const SHORT_NAMES = { 'vases': 'Vases & Flower Arranging' };
+function checkoutTitle(slug, name) {
+  const t = SHORT_NAMES[slug] || name;
+  return t.length <= 30 ? t : `${t.slice(0, 29).trim()}…`;
+}
+
 function validate(b) {
   const str = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
   if (!str(b.workshop, 40)) return 'Missing workshop.';
@@ -107,7 +114,7 @@ module.exports = async function handler(req, res) {
     const returnUrl = `${siteOrigin(req)}/${page}?booking=${id}#book`;
     const checkout = await createCheckout({
       bookingId: id,
-      title: `${workshop.name} – ${date} ${time}`,
+      title: checkoutTitle(slug, workshop.name),
       price: workshop.price,
       redirectUrl: returnUrl,
     });

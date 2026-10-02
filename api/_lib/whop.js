@@ -42,7 +42,7 @@ async function createCheckout({ bookingId, title, price, redirectUrl }) {
     plan_type: 'one_time',
     initial_price: Number(price),
     currency: (env('WHOP_CURRENCY') || 'aud').toLowerCase(),
-    title: title.slice(0, 80),
+    title: title.slice(0, 30), // Whop's maximum
     metadata: { booking_id: bookingId },
   };
   if (env('WHOP_PRODUCT_ID')) plan.product_id = env('WHOP_PRODUCT_ID');
