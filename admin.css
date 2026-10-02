@@ -168,6 +168,7 @@ button.adm-cell.past { cursor: pointer; background: rgba(122,92,62,0.08); }
 .adm-count.full, .adm-full { color: #a33a2a; }
 .adm-people li { font-size: 14px; padding: 10px 0; border-bottom: 1px solid var(--cream-light); line-height: 1.6; overflow-wrap: anywhere; }
 .adm-people a { color: var(--brown); }
+.adm-note { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--text-light); font-style: italic; }
 .adm-danger { margin-top: 22px; background: var(--white); border-color: #a33a2a; color: #a33a2a; }
 .adm-danger:hover { background: #a33a2a; color: var(--white); }
 

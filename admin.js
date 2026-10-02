@@ -207,6 +207,7 @@
           ${people.map(p => `<li>
             <strong>${esc(p.name)}</strong> <span class="adm-muted">${esc(p.time)}</span><br />
             <a href="mailto:${esc(p.email)}">${esc(p.email)}</a> · <a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>
+            ${p.notes ? `<br /><span class="adm-note">${esc(p.notes)}</span>` : ''}
           </li>`).join('')}
         </ul>` : '<p class="adm-muted">No bookings yet.</p>'}
         <button type="button" class="btn-outline adm-danger" data-close-date>Close this date</button>
