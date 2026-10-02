@@ -75,8 +75,7 @@ function initBooking(opts) {
     }[c]));
   }
 
-  // Meta Pixel events (pixel.js). Purchase fires once per booking, keyed by
-  // booking id so a refresh or the return-from-Whop page doesn't count it twice.
+  // Meta Pixel events (pixel.js). Purchase is sent from the thank-you page.
   function track(event, params, eventID) {
     if (typeof window.fbq !== 'function') return;
     window.fbq('track', event, {
@@ -89,12 +88,6 @@ function initBooking(opts) {
     }, eventID ? { eventID } : undefined);
   }
 
-  function trackPurchase(id) {
-    const key = `fbq-purchase-${id}`;
-    try { if (localStorage.getItem(key)) return; } catch { /* storage blocked */ }
-    track('Purchase', { num_items: 1 }, id);
-    try { localStorage.setItem(key, '1'); } catch { /* storage blocked */ }
-  }
 
   function steps() {
     const order = ['date', 'time', 'details', 'pay'];
@@ -227,11 +220,7 @@ function initBooking(opts) {
         const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.status === 'paid') {
-          trackPurchase(id);
-          state.paymentStatus = 'paid';
-          state.step = 'done';
-          render();
-          load(false);
+          location.href = `thankyou.html?booking=${encodeURIComponent(id)}`;
           return;
         }
       } catch { /* keep waiting */ }
@@ -252,26 +241,10 @@ function initBooking(opts) {
     `;
   }
 
-  // Customer is back from Whop checkout: show the booking and wait for the payment webhook.
-  async function showReturn(id) {
-    try {
-      const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return false;
-      opts.name = data.workshop;
-      opts.price = data.price;
-      state.date = data.date;
-      state.time = data.time;
-      state.details.email = data.email;
-      state.paymentStatus = data.status;
-      state.step = 'done';
-      render();
-      if (data.status === 'paid') trackPurchase(id);
-      else waitForPayment(id);
-      return true;
-    } catch {
-      return false;
-    }
+  // Older return links (?booking=<id> on a workshop page) go to the thank-you page.
+  function showReturn(id) {
+    location.replace(`thankyou.html?booking=${encodeURIComponent(id)}`);
+    return true;
   }
 
   function renderLoading() {
@@ -391,7 +364,7 @@ function initBooking(opts) {
   render();
   load(true).then(async () => {
     if (!state.loadError) track('ViewContent');
-    if (bookingId && await showReturn(bookingId)) return;
+    if (bookingId && showReturn(bookingId)) return;
     if (!state.loadError) state.step = 'date';
     render();
   });

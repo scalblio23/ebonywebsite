@@ -9,15 +9,6 @@ const {
 } = require('./_lib/store');
 const { whopConfigured, createCheckout } = require('./_lib/whop');
 
-// Page each workshop's booking widget lives on (customers return here after paying).
-const PAGES = {
-  'beginners': 'workshop-beginners.html',
-  '6-week': 'workshop-6-week.html',
-  'dinner-set': 'workshop-dinner-set.html',
-  'serving-ware': 'workshop-serving-ware.html',
-  'vases': 'workshop-vases.html',
-};
-
 // Whop limits plan titles to 30 characters.
 const SHORT_NAMES = { 'vases': 'Vases & Flower Arranging' };
 function checkoutTitle(slug, name) {
@@ -110,8 +101,8 @@ module.exports = async function handler(req, res) {
   };
 
   try {
-    const page = PAGES[slug] || 'workshops.html';
-    const returnUrl = `${siteOrigin(req)}/${page}?booking=${id}#book`;
+    // After paying, Whop sends the customer to the thank-you page for this booking.
+    const returnUrl = `${siteOrigin(req)}/thankyou.html?booking=${id}`;
     const checkout = await createCheckout({
       bookingId: id,
       title: checkoutTitle(slug, workshop.name),

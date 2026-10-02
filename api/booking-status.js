@@ -18,7 +18,8 @@ module.exports = async function handler(req, res) {
     const h = JSON.parse(raw);
     return res.status(200).json({
       status: paid ? 'paid' : 'pending',
-      workshop: h.workshop, date: h.date, time: h.time, price: h.price, email: h.email,
+      slug: h.slug, workshop: h.workshop, date: h.date, time: h.time, price: h.price,
+      name: h.name, email: h.email,
     });
   } catch (err) {
     console.error('booking status failed', err);
