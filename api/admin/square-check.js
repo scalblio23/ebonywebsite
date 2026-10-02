@@ -59,6 +59,16 @@ module.exports = async function handler(req, res) {
       }
     } else {
       ok(`Access token works in ${env}`);
+      // The card form (Application ID) and the charge (Access token) must be the same app.
+      const st = await fetch(`${BASES[env]}/oauth2/token/status`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Square-Version': '2024-10-17', 'Content-Type': 'application/json' },
+      }).then(r => r.json()).catch(() => ({}));
+      if (st.client_id && appId) {
+        if (st.client_id === appId) ok('Application ID and Access token are from the same app');
+        else bad(`Application ID and Access token are from different apps. The token belongs to app ${st.client_id} — set SQUARE_APPLICATION_ID to that, or copy both from the same app's Credentials page.`);
+      }
+      if (st.merchant_id) ok(`Square account (merchant) ID: ${st.merchant_id}`);
       if (locationId) {
         const loc = here.locations.find(l => l.id === locationId);
         if (!loc) {
