@@ -14,6 +14,9 @@
   let active = null;   // workshop slug
   let month = new Date(today.getFullYear(), today.getMonth(), 1);
   let selected = null; // ISO date being edited
+  let view = 'students'; // 'students' | 'availability'
+  let showPast = false;
+  let search = '';
 
   // ---------- helpers ----------
   function esc(s) {
@@ -244,7 +247,111 @@
     `;
   }
 
+  // ---------- students view ----------
+  function timeKey(label) {
+    const m = /^(\d{1,2}):(\d{2})\s*(am|pm)/i.exec(label || '');
+    if (!m) return 0;
+    return ((Number(m[1]) % 12) + (m[3].toLowerCase() === 'pm' ? 12 : 0)) * 60 + Number(m[2]);
+  }
+
+  function savedSeats(slug, iso) {
+    const x = server.workshops[slug];
+    const d = x && x.dates[iso];
+    return d && Number.isInteger(d.seats) ? d.seats : (x ? x.seatLimit : 0);
+  }
+
+  function sessionList() {
+    const map = new Map();
+    const add = (slug, date, time) => {
+      const key = `${slug}|${date}|${time}`;
+      if (!map.has(key)) map.set(key, { slug, date, time, people: [] });
+      return map.get(key);
+    };
+    // Open sessions (even with nobody booked yet)
+    for (const [slug, x] of Object.entries(server.workshops)) {
+      for (const [date, d] of Object.entries(x.dates)) {
+        for (const t of d.times) if (x.times.includes(t)) add(slug, date, t);
+      }
+    }
+    for (const [slug, list] of Object.entries(server.bookings)) {
+      for (const b of list) add(slug, b.date, b.time).people.push(b);
+    }
+    return [...map.values()].sort((a, b) =>
+      a.date.localeCompare(b.date) || timeKey(a.time) - timeKey(b.time) || a.slug.localeCompare(b.slug));
+  }
+
+  function renderStudents() {
+    const q = search.trim().toLowerCase();
+    const match = p => !q || [p.name, p.email, p.phone, p.notes].some(v => String(v || '').toLowerCase().includes(q));
+    let sessions = sessionList().filter(s => showPast || fromIso(s.date) >= today);
+    if (q) sessions = sessions.map(s => ({ ...s, people: s.people.filter(match) })).filter(s => s.people.length);
+    const total = sessions.reduce((n, s) => n + s.people.length, 0);
+
+    const cards = sessions.map(s => {
+      const x = server.workshops[s.slug];
+      const seats = savedSeats(s.slug, s.date);
+      const count = (server.booked[s.slug] || {})[`${s.date}|${s.time}`] || s.people.length;
+      const full = count >= seats;
+      const emails = [...new Set(s.people.map(p => p.email).filter(Boolean))].join(', ');
+      return `
+        <section class="adm-card adm-session">
+          <div class="adm-session-head">
+            <div>
+              <h2>${esc(x ? x.name : s.slug)}</h2>
+              <p class="adm-session-when">${longDate(s.date)} · ${esc(s.time)}</p>
+            </div>
+            <div class="adm-session-meta">
+              <span class="adm-count${full ? ' full' : ''}">${count} / ${seats} booked${full ? ' · Full' : ''}</span>
+              ${emails ? `<button type="button" class="adm-link" data-copy="${esc(emails)}">Copy emails</button>` : ''}
+            </div>
+          </div>
+          ${s.people.length ? `<div class="adm-table-wrap"><table class="adm-table adm-students">
+            <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Notes</th></tr></thead>
+            <tbody>${s.people.map((p, i) => `<tr>
+              <td class="adm-muted">${i + 1}</td>
+              <td><strong>${esc(p.name)}</strong></td>
+              <td>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}</td>
+              <td>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ''}</td>
+              <td class="adm-notes">${esc(p.notes || '')}</td>
+            </tr>`).join('')}</tbody>
+          </table></div>` : '<p class="adm-muted">Nobody booked yet.</p>'}
+        </section>
+      `;
+    }).join('');
+
+    return `
+      <div class="adm-toolbar">
+        <input type="search" id="adm-search" placeholder="Search name, email, phone or notes" value="${esc(search)}" />
+        <label class="adm-check"><input type="checkbox" id="adm-past" ${showPast ? 'checked' : ''} /> Show past classes</label>
+      </div>
+      <p class="adm-muted adm-summary">${sessions.length} ${sessions.length === 1 ? 'class' : 'classes'} · ${total} ${total === 1 ? 'student' : 'students'}</p>
+      <div class="adm-sessions">
+        ${cards || `<section class="adm-card"><p class="adm-muted">${q ? 'No students match your search.' : 'No upcoming classes yet. Open dates in Availability.'}</p></section>`}
+      </div>
+    `;
+  }
+
+  function renderViews() {
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    $('adm-title').textContent = view === 'students' ? 'Students' : 'Availability';
+    $('adm-subtitle').textContent = view === 'students'
+      ? 'Everyone booked into each class, soonest first.'
+      : 'Pick a workshop, set its times and seats, then click dates on the calendar to open or close them.';
+    $('adm-tabs').hidden = view !== 'availability';
+  }
+
   function render() {
+    renderViews();
+    if (view === 'students') {
+      const hadFocus = document.activeElement && document.activeElement.id === 'adm-search';
+      $('adm-panel').innerHTML = renderStudents();
+      if (hadFocus) {
+        const el = $('adm-search');
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+      return;
+    }
     renderTabs();
     $('adm-panel').innerHTML = `<div class="adm-grid">
       ${renderSettings()}
@@ -358,6 +465,38 @@
         : d.times.filter(x => x !== t);
       setDirty(true);
       render();
+    }
+  });
+
+  $('adm-views').addEventListener('click', e => {
+    const t = e.target.closest('[data-view]');
+    if (!t || t.dataset.view === view) return;
+    view = t.dataset.view;
+    render();
+  });
+
+  $('adm-panel').addEventListener('input', e => {
+    if (e.target.id === 'adm-search') {
+      search = e.target.value;
+      render();
+    }
+  });
+
+  $('adm-panel').addEventListener('change', e => {
+    if (e.target.id === 'adm-past') {
+      showPast = e.target.checked;
+      render();
+    }
+  });
+
+  $('adm-panel').addEventListener('click', async e => {
+    const t = e.target.closest('[data-copy]');
+    if (!t) return;
+    try {
+      await navigator.clipboard.writeText(t.dataset.copy);
+      t.textContent = 'Copied';
+    } catch {
+      prompt('Copy these emails:', t.dataset.copy);
     }
   });
 

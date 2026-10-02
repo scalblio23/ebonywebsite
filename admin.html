@@ -35,9 +35,13 @@
 
   <!-- DASHBOARD -->
   <main class="adm-main" id="adm-app" hidden>
+    <nav class="adm-views" id="adm-views">
+      <button type="button" class="adm-view active" data-view="students">Students</button>
+      <button type="button" class="adm-view" data-view="availability">Availability</button>
+    </nav>
     <div class="adm-title-row">
-      <h1>Availability</h1>
-      <p class="adm-muted">Pick a workshop, set its times and seats, then click dates on the calendar to open or close them.</p>
+      <h1 id="adm-title">Students</h1>
+      <p class="adm-muted" id="adm-subtitle"></p>
     </div>
     <p class="adm-error adm-banner" id="adm-app-error" role="alert" hidden></p>
     <nav class="adm-tabs" id="adm-tabs"></nav>
