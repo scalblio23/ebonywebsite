@@ -1,4 +1,4 @@
-// Calendly-style booking widget: date → time → details → Square checkout → confirmed.
+// Calendly-style booking widget: date → time → details + card payment (Square) → booked.
 // Dates, times and seats come from /api/availability (set in admin.html).
 // Usage:
 //   initBooking({ containerId: 'booking', workshop: 'beginners' });
@@ -35,6 +35,7 @@ function initBooking(opts) {
       if (!res.ok) throw new Error(data.error || 'Could not load availability.');
       opts.name = data.name;
       opts.price = data.price;
+      opts.square = data.square;
       sessions = new Map(data.dates.map(d => [d.date, d.slots]));
       const first = data.dates.find(d => d.slots.some(s => s.left > 0));
       if (moveToFirst && first) {
@@ -153,50 +154,24 @@ function initBooking(opts) {
         <label>Full name<input name="name" type="text" autocomplete="name" required value="${esc(d.name)}" /></label>
         <label>Email<input name="email" type="email" autocomplete="email" required value="${esc(d.email)}" /></label>
         <label>Phone<input name="phone" type="tel" autocomplete="tel" required value="${esc(d.phone)}" /></label>
-        ${state.error ? `<p class="bk-error" role="alert">${esc(state.error)}</p>` : ''}
-        <button type="submit" class="btn-solid bk-submit" ${state.submitting ? 'disabled' : ''}>
-          ${state.submitting ? 'Opening secure checkout…' : `Pay $${Number(opts.price).toFixed(2)} &amp; Book`}
-        </button>
+        <div class="bk-card-label">Card details</div>
+        <div id="bk-card" class="bk-card"><p class="bk-sub">Loading secure card form…</p></div>
+        <p class="bk-error" role="alert" ${state.error ? '' : 'hidden'}>${esc(state.error)}</p>
+        <button type="submit" class="btn-solid bk-submit">Pay $${Number(opts.price).toFixed(2)} &amp; Book</button>
+        <p class="bk-secure">Payments are processed securely by Square.</p>
       </form>
     `;
   }
 
   function renderDone() {
-    const paid = state.paymentStatus === 'paid';
     return `
       <div class="bk-done">
-        <p class="bk-heading">${paid ? "You're booked in" : 'Confirming your payment…'}</p>
-        <p class="bk-sub">${paid
-          ? `Payment received. A confirmation has been sent to <strong>${esc(state.details.email)}</strong>.`
-          : `This usually takes a few seconds. Your confirmation email will go to <strong>${esc(state.details.email)}</strong>.`}</p>
+        <p class="bk-heading">You're booked in</p>
+        <p class="bk-sub">Payment received. A confirmation has been sent to <strong>${esc(state.details.email)}</strong>.</p>
         ${summary()}
         <button type="button" class="btn-outline bk-again" data-restart>Book another spot</button>
       </div>
     `;
-  }
-
-  // Customer is back from Square checkout: show the booking and wait for the payment webhook.
-  async function showReturn(id) {
-    for (let i = 0; i < 15; i++) {
-      try {
-        const res = await fetch(`/api/booking-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return false;
-        opts.name = data.workshop;
-        opts.price = data.price;
-        state.date = data.date;
-        state.time = data.time;
-        state.details.email = data.email;
-        state.paymentStatus = data.status;
-        state.step = 'done';
-        render();
-        if (data.status === 'paid') return true;
-      } catch {
-        return false;
-      }
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    return true;
   }
 
   function renderLoading() {
@@ -207,6 +182,7 @@ function initBooking(opts) {
   }
 
   function render() {
+    unmountCard();
     const body = {
       loading: renderLoading,
       date: renderDate,
@@ -215,6 +191,88 @@ function initBooking(opts) {
       done: renderDone,
     }[state.step]();
     root.innerHTML = steps() + `<div class="bk-body">${body}</div>`;
+    if (state.step === 'details') mountCard();
+  }
+
+  // --- Square card field ----------------------------------------------------
+  // The card number is typed into Square's secure iframe and never reaches our server.
+  let payments = null;
+  let card = null;
+  let sdkPromise = null;
+
+  const CARD_STYLE = {
+    '.input-container': { borderColor: 'rgba(0, 0, 0, 0.15)', borderRadius: '0px' },
+    '.input-container.is-focus': { borderColor: '#7a5c3e' },
+    '.input-container.is-error': { borderColor: '#a33a2a' },
+    'input': { color: '#3a3530', fontSize: '15px' },
+    'input::placeholder': { color: '#9a8f87' },
+    '.message-text': { color: '#6b6059' },
+    '.message-icon': { color: '#6b6059' },
+    '.message-text.is-error': { color: '#a33a2a' },
+    '.message-icon.is-error': { color: '#a33a2a' },
+  };
+
+  function loadSdk(env) {
+    if (window.Square) return Promise.resolve();
+    if (!sdkPromise) {
+      sdkPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = env === 'production'
+          ? 'https://web.squarecdn.com/v1/square.js'
+          : 'https://sandbox.web.squarecdn.com/v1/square.js';
+        s.onload = resolve;
+        s.onerror = () => { sdkPromise = null; reject(new Error('Could not load the card form.')); };
+        document.head.appendChild(s);
+      });
+    }
+    return sdkPromise;
+  }
+
+  async function mountCard() {
+    const host = root.querySelector('#bk-card');
+    try {
+      if (!opts.square) throw new Error('Card payments are not set up yet.');
+      await loadSdk(opts.square.environment);
+      payments = payments || window.Square.payments(opts.square.applicationId, opts.square.locationId);
+      let c;
+      try {
+        c = await payments.card({ style: CARD_STYLE });
+      } catch {
+        c = await payments.card(); // fall back to Square's default look
+      }
+      if (!host.isConnected) return c.destroy();
+      host.innerHTML = '';
+      await c.attach(host);
+      card = c;
+    } catch (err) {
+      console.error(err);
+      host.innerHTML = '';
+      showError(`${err.message || 'Could not load the card form.'} Please email ebonyfortunatow@gmail.com to book.`);
+    }
+  }
+
+  function unmountCard() {
+    if (card) card.destroy().catch(() => {});
+    card = null;
+  }
+
+  // Update the details form in place (re-rendering would reset the card field).
+  function showError(msg) {
+    state.error = msg;
+    const el = root.querySelector('.bk-form .bk-error');
+    if (el) {
+      el.textContent = msg;
+      el.hidden = !msg;
+    }
+  }
+
+  function setSubmitting(on) {
+    state.submitting = on;
+    const btn = root.querySelector('.bk-submit');
+    if (btn) {
+      btn.disabled = on;
+      btn.innerHTML = on ? 'Processing payment…' : `Pay $${Number(opts.price).toFixed(2)} &amp; Book`;
+    }
   }
 
   function validate(d) {
@@ -225,18 +283,26 @@ function initBooking(opts) {
   }
 
   async function submit(form) {
+    if (state.submitting) return;
     const fd = new FormData(form);
     state.details = {
       name: fd.get('name') || '',
       email: fd.get('email') || '',
       phone: fd.get('phone') || '',
     };
-    state.error = validate(state.details);
-    if (state.error) return render();
+    const invalid = validate(state.details);
+    if (invalid) return showError(invalid);
+    if (!card) return showError('The card form has not loaded yet. Please wait a moment and try again.');
 
-    state.submitting = true;
-    render();
+    showError('');
+    setSubmitting(true);
     try {
+      const result = await card.tokenize();
+      if (result.status !== 'OK') {
+        const msg = (result.errors || []).map(e => e.message).filter(Boolean)[0];
+        throw new Error(msg || 'Please check your card details.');
+      }
+
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -247,25 +313,30 @@ function initBooking(opts) {
           name: state.details.name.trim(),
           email: state.details.email.trim(),
           phone: state.details.phone.trim(),
+          sourceId: result.token,
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (res.status === 409) {
-          await load(false);
-          state.step = 'time';
-          state.time = null;
-        }
-        throw new Error(data.error || 'Something went wrong. Please try again.');
+      if (res.status === 409) {
+        // Session filled up or closed: back to the time list with fresh availability.
+        await load(false);
+        state.submitting = false;
+        state.step = 'time';
+        state.time = null;
+        state.error = data.error || 'That session is no longer available.';
+        return render();
       }
-      // Off to Square's secure checkout; Square sends the customer back here with ?booking=<id>.
-      window.location.href = data.checkoutUrl;
-    } catch (err) {
+      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+
       state.submitting = false;
-      state.error = err.message === 'Failed to fetch'
-        ? 'Could not reach the booking server. Please try again.'
-        : err.message;
+      state.step = 'done';
       render();
+      load(false);
+    } catch (err) {
+      setSubmitting(false);
+      showError(err.message === 'Failed to fetch'
+        ? 'Could not reach the booking server. Please try again.'
+        : err.message);
     }
   }
 
@@ -291,7 +362,6 @@ function initBooking(opts) {
       state.error = '';
       render();
     } else if ('restart' in t.dataset) {
-      if (bookingId) history.replaceState(null, '', location.pathname + '#book');
       state.step = 'date';
       state.date = null;
       state.time = null;
@@ -304,11 +374,8 @@ function initBooking(opts) {
     submit(e.target);
   });
 
-  const bookingId = new URLSearchParams(location.search).get('booking');
-
   render();
-  load(true).then(async () => {
-    if (bookingId && await showReturn(bookingId)) return;
+  load(true).then(() => {
     if (!state.loadError) state.step = 'date';
     render();
   });

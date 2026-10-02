@@ -1,7 +1,6 @@
 // GET /api/availability?workshop=beginners — public list of bookable sessions.
-const {
-  getConfig, getBookedCounts, todayIso, seatsFor, storageConfigured, releaseExpiredHolds,
-} = require('./_lib/store');
+const { getConfig, getBookedCounts, todayIso, seatsFor, storageConfigured } = require('./_lib/store');
+const { publicConfig } = require('./_lib/square');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -13,7 +12,6 @@ module.exports = async function handler(req, res) {
 
   const slug = String(req.query.workshop || '');
   try {
-    await releaseExpiredHolds();
     const config = await getConfig();
     const w = config.workshops[slug];
     if (!w) return res.status(404).json({ error: 'Unknown workshop.' });
@@ -31,7 +29,7 @@ module.exports = async function handler(req, res) {
       })
       .filter(d => d.slots.length);
 
-    return res.status(200).json({ name: w.name, price: w.price, dates });
+    return res.status(200).json({ name: w.name, price: w.price, dates, square: publicConfig() });
   } catch (err) {
     console.error('availability failed', err);
     return res.status(500).json({ error: 'Could not load availability.' });

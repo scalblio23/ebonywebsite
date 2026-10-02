@@ -1118,3 +1118,15 @@ body.bk-modal-open { overflow: hidden; }
   .workshops-row { flex-direction: column; }
   .workshops-row--centred .workshop-card { flex: 1; }
 }
+
+/* Square card field */
+.bk-card-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  margin-bottom: -8px;
+}
+.bk-card { min-height: 50px; }
+.bk-card .bk-sub { margin: 12px 0 0; }
+.bk-secure { font-size: 12px; color: var(--text-light); text-align: center; }
