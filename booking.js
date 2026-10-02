@@ -36,6 +36,10 @@ function initBooking(opts) {
       opts.name = data.name;
       opts.price = data.price;
       opts.square = data.square;
+      // Keep the price text elsewhere on the page in step with the admin price.
+      document.querySelectorAll('[data-price]').forEach(el => {
+        el.textContent = `$${Number(data.price) % 1 ? Number(data.price).toFixed(2) : data.price}`;
+      });
       sessions = new Map(data.dates.map(d => [d.date, d.slots]));
       const first = data.dates.find(d => d.slots.some(s => s.left > 0));
       if (moveToFirst && first) {
