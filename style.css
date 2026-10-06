@@ -13,6 +13,7 @@
   --text-light: #6b6059;
   --font-serif: 'Roboto', sans-serif;
   --font-sans: 'Roboto', sans-serif;
+  --nav-h: 60px;
 }
 
 html { scroll-behavior: smooth; }
@@ -38,7 +39,7 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
   justify-content: space-between;
   padding: 0 48px;
-  height: 60px;
+  height: var(--nav-h);
   background: transparent;
   border-bottom: none;
   transition: background 0.3s, border-color 0.3s;
@@ -80,8 +81,15 @@ a { text-decoration: none; color: inherit; }
 
 .nav.scrolled .nav-links a { color: var(--text); text-shadow: none; }
 
-.nav-links a:hover,
-.nav-links a.active { color: rgba(255,255,255,0.65); }
+.nav-links a:hover { color: rgba(255,255,255,0.65); }
+
+.nav-links a.active {
+  color: var(--white);
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+}
+
+.nav.scrolled .nav-links a.active { border-bottom-color: transparent; }
 
 .nav.scrolled .nav-links a:hover,
 .nav.scrolled .nav-links a.active { color: var(--brown); }
@@ -143,7 +151,7 @@ a { text-decoration: none; color: inherit; }
   align-items: flex-end;
   justify-content: flex-end;
   padding: 60px 80px;
-  margin-top: -60px;
+  margin-top: calc(-1 * var(--nav-h));
 }
 
 .hero-overlay {
@@ -291,7 +299,7 @@ a { text-decoration: none; color: inherit; }
 .about {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--nav-h));
   background: var(--white);
 }
 
@@ -338,7 +346,7 @@ a { text-decoration: none; color: inherit; }
 .about--page {
   height: auto;
   min-height: 60vh;
-  margin-top: 60px;
+  margin-top: var(--nav-h);
 }
 
 /* ===== ACCOLADES ===== */
@@ -609,8 +617,8 @@ a { text-decoration: none; color: inherit; }
 .workshops-hero {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: calc(100vh - 60px);
-  margin-top: 60px;
+  height: calc(100vh - var(--nav-h));
+  margin-top: var(--nav-h);
 }
 
 .workshops-hero-image {
@@ -1110,31 +1118,74 @@ body.bk-modal-open { overflow: hidden; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .nav { padding: 0 20px; }
+  /* Single-row header: name left, links evenly spaced on the right */
+  .nav { padding: 0 16px; gap: 16px; }
 
-  .hero { height: 70vh; padding: 40px 24px; }
-  .hero-text .btn-outline { padding: 17px 40px; }
+  .nav-logo {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+  }
+
+  .nav-links {
+    flex: 1;
+    max-width: 210px;
+    gap: 0;
+    justify-content: space-between;
+  }
+
+  .nav-links a {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .hero { height: 70vh; padding: 40px 24px; justify-content: center; }
+  .hero-text .btn-outline { padding: 17px 40px; margin-top: 0; }
   .btn-solid, .btn-outline { padding-left: 32px; padding-right: 32px; }
   .hero-text { align-items: center; }
-  .hero-label { text-align: center; }
+  .hero-label { display: none; }
 
   .split { grid-template-columns: 1fr; height: auto; }
   .split-left { padding: 50px 30px; }
   .split-right { height: 60vw; min-height: 280px; }
 
-  .about { grid-template-columns: 1fr; }
-  .about-text { padding: 50px 30px; }
-  .about-image { height: 70vw; }
+  /* Stack text then photo, letting the section grow to fit its content */
+  .about { grid-template-columns: 1fr; height: auto; }
+  .about-text { padding: 50px 30px 24px; }
+  .about-image { height: auto; padding: 0 30px 50px; }
+  .about-image img { height: auto; max-height: 75vh; }
+
+  .location { padding: 50px 24px; gap: 24px; }
+  .location-image { height: 60vw; min-height: 240px; }
 
   .accolades { grid-template-columns: 1fr; padding: 40px 30px; }
 
   .footer { padding: 32px 24px; }
   .footer-bottom { flex-direction: column; }
 
-  .page-header { padding: 100px 24px 40px; }
+  .page-header { padding: calc(var(--nav-h) + 40px) 24px 40px; }
 
+  .workshops-hero { grid-template-columns: 1fr; height: auto; }
+  .workshops-hero-text { padding: 48px 24px 8px; text-align: center; }
+  .workshops-hero-text h1 { font-size: 26px; letter-spacing: 0.24em; }
+  .workshops-hero-image { height: 80vw; order: -1; }
+
+  .workshops-grid { padding: 48px 24px; gap: 32px; }
   .workshops-row { flex-direction: column; }
   .workshops-row--centred .workshop-card { flex: 1; }
+}
+
+@media (max-width: 360px) {
+  .nav { gap: 12px; }
+  .nav-logo { font-size: 10px; letter-spacing: 0.1em; }
+  .nav-links a { font-size: 11px; letter-spacing: 0.02em; }
+}
+
+/* Hero button wording: full label on desktop, simpler on mobile */
+.btn-label-mobile { display: none; }
+@media (max-width: 768px) {
+  .btn-label-desktop { display: none; }
+  .btn-label-mobile { display: inline; }
 }
 
 /* Whop embedded checkout */
