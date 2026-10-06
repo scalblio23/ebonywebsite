@@ -81,8 +81,15 @@ a { text-decoration: none; color: inherit; }
 
 .nav.scrolled .nav-links a { color: var(--text); text-shadow: none; }
 
-.nav-links a:hover,
-.nav-links a.active { color: rgba(255,255,255,0.65); }
+.nav-links a:hover { color: rgba(255,255,255,0.65); }
+
+.nav-links a.active {
+  color: var(--white);
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+}
+
+.nav.scrolled .nav-links a.active { border-bottom-color: transparent; }
 
 .nav.scrolled .nav-links a:hover,
 .nav.scrolled .nav-links a.active { color: var(--brown); }
@@ -950,6 +957,27 @@ a { text-decoration: none; color: inherit; }
   .workshops-hero-image { height: 80vw; order: -1; }
 
   .workshops-grid { padding: 48px 24px; gap: 32px; }
+  /* Workshop detail pages */
+  .ws-hero { height: 75vh; min-height: 460px; padding: 32px 24px; }
+  .ws-hero .hero-overlay { background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.6) 100%); }
+  .ws-hero-text h1 { font-size: 32px; line-height: 1.2; }
+  .ws-hero-meta { font-size: 12px; line-height: 1.8; }
+
+  .ws-about { padding: 48px 24px; }
+  .ws-about-inner { grid-template-columns: 1fr; gap: 40px; }
+  .ws-about-text p { font-size: 14.5px; }
+  .ws-carousel-wrap { height: auto; aspect-ratio: 4 / 5; }
+
+  .ws-details-grid { gap: 18px 20px; }
+
+  .ws-booking { padding: 48px 24px; }
+  .ws-booking-inner { grid-template-columns: 1fr; gap: 32px; }
+  .ws-booking-text h2 { font-size: 24px; }
+  .ws-booking-note a { overflow-wrap: anywhere; }
+  .ws-booking-text .btn-solid { display: block; text-align: center; padding: 14px 20px; }
+  .ws-calendar { padding: 20px 14px; }
+  .cal-cell { font-size: 14px; }
+
   .workshops-row { flex-direction: column; }
   .workshops-row--centred .workshop-card { flex: 1; }
 }
