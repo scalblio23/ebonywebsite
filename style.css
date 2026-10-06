@@ -919,9 +919,10 @@ a { text-decoration: none; color: inherit; }
     letter-spacing: 0.04em;
   }
 
-  .hero { height: 70vh; padding: 40px 24px; }
+  .hero { height: 70vh; padding: 40px 24px; justify-content: center; }
   .hero-text { align-items: center; }
-  .hero-label { text-align: center; }
+  .hero-label { display: none; }
+  .hero-text .btn-outline { margin-top: 0; }
 
   .split { grid-template-columns: 1fr; height: auto; }
   .split-left { padding: 50px 30px; }
