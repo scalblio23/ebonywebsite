@@ -13,6 +13,7 @@
   --text-light: #6b6059;
   --font-serif: 'Roboto', sans-serif;
   --font-sans: 'Roboto', sans-serif;
+  --nav-h: 60px;
 }
 
 html { scroll-behavior: smooth; }
@@ -38,7 +39,7 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
   justify-content: space-between;
   padding: 0 48px;
-  height: 60px;
+  height: var(--nav-h);
   background: transparent;
   border-bottom: none;
   transition: background 0.3s, border-color 0.3s;
@@ -133,7 +134,7 @@ a { text-decoration: none; color: inherit; }
   align-items: flex-end;
   justify-content: flex-end;
   padding: 60px 80px;
-  margin-top: -60px;
+  margin-top: calc(-1 * var(--nav-h));
 }
 
 .hero-overlay {
@@ -277,7 +278,7 @@ a { text-decoration: none; color: inherit; }
 .about {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--nav-h));
   background: var(--white);
 }
 
@@ -324,7 +325,7 @@ a { text-decoration: none; color: inherit; }
 .about--page {
   height: auto;
   min-height: 60vh;
-  margin-top: 60px;
+  margin-top: var(--nav-h);
 }
 
 /* ===== ACCOLADES ===== */
@@ -576,8 +577,8 @@ a { text-decoration: none; color: inherit; }
 .workshops-hero {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: calc(100vh - 60px);
-  margin-top: 60px;
+  height: calc(100vh - var(--nav-h));
+  margin-top: var(--nav-h);
 }
 
 .workshops-hero-image {
@@ -897,7 +898,32 @@ a { text-decoration: none; color: inherit; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .nav { padding: 0 20px; }
+  /* Two-row header: name centred on one line, links centred beneath */
+  :root { --nav-h: 84px; }
+
+  .nav {
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 16px;
+  }
+
+  .nav-logo {
+    font-size: 12px;
+    letter-spacing: 0.24em;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .nav-links {
+    gap: 28px;
+    justify-content: center;
+  }
+
+  .nav-links a {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+  }
 
   .hero { height: 70vh; padding: 40px 24px; }
   .hero-text { align-items: center; }
@@ -907,17 +933,33 @@ a { text-decoration: none; color: inherit; }
   .split-left { padding: 50px 30px; }
   .split-right { height: 60vw; min-height: 280px; }
 
-  .about { grid-template-columns: 1fr; }
-  .about-text { padding: 50px 30px; }
-  .about-image { height: 70vw; }
+  /* Stack text then photo, letting the section grow to fit its content */
+  .about { grid-template-columns: 1fr; height: auto; }
+  .about-text { padding: 50px 30px 24px; }
+  .about-image { height: auto; padding: 0 30px 50px; }
+  .about-image img { height: auto; max-height: 75vh; }
+
+  .location { padding: 50px 24px; gap: 24px; }
+  .location-image { height: 60vw; min-height: 240px; }
 
   .accolades { grid-template-columns: 1fr; padding: 40px 30px; }
 
   .footer { padding: 32px 24px; }
   .footer-bottom { flex-direction: column; }
 
-  .page-header { padding: 100px 24px 40px; }
+  .page-header { padding: calc(var(--nav-h) + 40px) 24px 40px; }
 
+  .workshops-hero { grid-template-columns: 1fr; height: auto; }
+  .workshops-hero-text { padding: 56px 24px; text-align: center; }
+  .workshops-hero-text h1 { font-size: 26px; letter-spacing: 0.24em; }
+  .workshops-hero-image { height: 80vw; }
+
+  .workshops-grid { padding: 48px 24px; gap: 32px; }
   .workshops-row { flex-direction: column; }
   .workshops-row--centred .workshop-card { flex: 1; }
+}
+
+@media (max-width: 360px) {
+  .nav-logo { letter-spacing: 0.18em; }
+  .nav-links { gap: 20px; }
 }
