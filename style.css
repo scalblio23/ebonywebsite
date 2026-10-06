@@ -945,9 +945,9 @@ a { text-decoration: none; color: inherit; }
   .page-header { padding: calc(var(--nav-h) + 40px) 24px 40px; }
 
   .workshops-hero { grid-template-columns: 1fr; height: auto; }
-  .workshops-hero-text { padding: 56px 24px; text-align: center; }
+  .workshops-hero-text { padding: 48px 24px 8px; text-align: center; }
   .workshops-hero-text h1 { font-size: 26px; letter-spacing: 0.24em; }
-  .workshops-hero-image { height: 80vw; }
+  .workshops-hero-image { height: 80vw; order: -1; }
 
   .workshops-grid { padding: 48px 24px; gap: 32px; }
   .workshops-row { flex-direction: column; }
