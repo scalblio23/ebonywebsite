@@ -898,31 +898,25 @@ a { text-decoration: none; color: inherit; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  /* Two-row header: name centred on one line, links centred beneath */
-  :root { --nav-h: 84px; }
-
-  .nav {
-    flex-direction: column;
-    justify-content: center;
-    gap: 10px;
-    padding: 0 16px;
-  }
+  /* Single-row header: name left, links evenly spaced on the right */
+  .nav { padding: 0 16px; gap: 16px; }
 
   .nav-logo {
-    font-size: 12px;
-    letter-spacing: 0.24em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     white-space: nowrap;
-    text-align: center;
   }
 
   .nav-links {
-    gap: 28px;
-    justify-content: center;
+    flex: 1;
+    max-width: 210px;
+    gap: 0;
+    justify-content: space-between;
   }
 
   .nav-links a {
     font-size: 12px;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.04em;
   }
 
   .hero { height: 70vh; padding: 40px 24px; }
@@ -960,6 +954,14 @@ a { text-decoration: none; color: inherit; }
 }
 
 @media (max-width: 360px) {
-  .nav-logo { letter-spacing: 0.18em; }
-  .nav-links { gap: 20px; }
+  .nav { gap: 12px; }
+  .nav-logo { font-size: 10px; letter-spacing: 0.1em; }
+  .nav-links a { font-size: 11px; letter-spacing: 0.02em; }
+}
+
+/* Hero button wording: full label on desktop, simpler on mobile */
+.btn-label-mobile { display: none; }
+@media (max-width: 768px) {
+  .btn-label-desktop { display: none; }
+  .btn-label-mobile { display: inline; }
 }
