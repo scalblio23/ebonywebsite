@@ -226,9 +226,6 @@
       const d = w().dates[iso];
       const seats = seatsFor(iso);
       const times = d.times.filter(t => w().times.includes(t));
-      if (!times.length) {
-        rows.push(`<tr data-date="${iso}"><td>${shortDate(iso)}</td><td class="adm-muted">No times open</td><td></td></tr>`);
-      }
       for (const t of times) {
         const booked = bookedFor(iso, t);
         rows.push(`<tr data-date="${iso}" class="${iso === selected ? 'selected' : ''}">
@@ -294,6 +291,8 @@
       const seats = savedSeats(s.slug, s.date);
       const count = (server.booked[s.slug] || {})[`${s.date}|${s.time}`] || s.people.length;
       const full = count >= seats;
+      const d = x && x.dates[s.date];
+      const closed = !(d && d.times.includes(s.time) && x.times.includes(s.time));
       const emails = [...new Set(s.people.map(p => p.email).filter(Boolean))].join(', ');
       return `
         <section class="adm-card adm-session">
@@ -303,7 +302,9 @@
               <p class="adm-session-when">${longDate(s.date)} · ${esc(s.time)}</p>
             </div>
             <div class="adm-session-meta">
-              <span class="adm-count${full ? ' full' : ''}">${count} / ${seats} booked${full ? ' · Full' : ''}</span>
+              ${closed
+                ? '<span class="adm-count full">Removed from availability</span>'
+                : `<span class="adm-count${full ? ' full' : ''}">${count} / ${seats} booked${full ? ' · Full' : ''}</span>`}
               ${emails ? `<button type="button" class="adm-link" data-copy="${esc(emails)}">Copy emails</button>` : ''}
             </div>
           </div>
@@ -433,7 +434,11 @@
         ? `${label} has ${booked} upcoming booking${booked === 1 ? '' : 's'}. Remove it anyway? Existing bookings are kept.`
         : `Remove ${label} from all dates?`)) return;
       w().times.splice(Number(ds.removeTime), 1);
-      for (const d of Object.values(w().dates)) d.times = d.times.filter(x => x !== label);
+      for (const [iso, d] of Object.entries(w().dates)) {
+        d.times = d.times.filter(x => x !== label);
+        if (!d.times.length) delete w().dates[iso];
+      }
+      if (selected && !w().dates[selected]) selected = null;
       setDirty(true);
     } else {
       return;
@@ -465,6 +470,11 @@
       d.times = el.checked
         ? w().times.filter(x => x === t || d.times.includes(x))
         : d.times.filter(x => x !== t);
+      // No times left means the date is closed, so remove it everywhere.
+      if (!d.times.length) {
+        if (closeDate(selected)) selected = null;
+        else d.times.push(t);
+      }
       setDirty(true);
       render();
     }

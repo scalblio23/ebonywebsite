@@ -25,8 +25,10 @@ function sanitize(input, current) {
     for (const [date, d] of Object.entries(w.dates && typeof w.dates === 'object' ? w.dates : {})) {
       if (!ISO.test(date) || !d || typeof d !== 'object') continue;
       const seats = d.seats === null || d.seats === '' ? NaN : Number(d.seats);
+      const dateTimes = [...new Set((Array.isArray(d.times) ? d.times : []).map(cleanTime))].filter(t => times.includes(t));
+      if (!dateTimes.length) continue; // a date with no times open is closed
       dates[date] = {
-        times: [...new Set((Array.isArray(d.times) ? d.times : []).map(cleanTime))].filter(t => times.includes(t)),
+        times: dateTimes,
         seats: Number.isInteger(seats) && seats >= 0 && seats <= 500 ? seats : null,
       };
     }
