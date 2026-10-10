@@ -39,6 +39,7 @@ function initBooking(opts) {
         el.textContent = `$${Number(data.price) % 1 ? Number(data.price).toFixed(2) : data.price}`;
       });
       sessions = new Map(data.dates.map(d => [d.date, d.slots]));
+      renderUpcomingDates(data.dates);
       const first = data.dates.find(d => d.slots.some(s => s.left > 0));
       if (moveToFirst && first) {
         const f = fromIso(first.date);
@@ -47,7 +48,36 @@ function initBooking(opts) {
       state.loadError = '';
     } catch (err) {
       state.loadError = err.message === 'Failed to fetch' ? 'Could not load availability.' : err.message;
+      document.querySelectorAll('[data-upcoming-dates]').forEach(el => {
+        el.innerHTML = '<p class="ws-dates-note">See the booking calendar below for available dates.</p>';
+      });
     }
+  }
+
+  // "Upcoming Dates" boxes on the page (e.g. the 6 week course), one per open
+  // session, so closing a date in admin also removes it here.
+  function renderUpcomingDates(dates) {
+    document.querySelectorAll('[data-upcoming-dates]').forEach(el => {
+      const weeks = Number(el.dataset.weeks) || 1;
+      const md = d => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+      const blocks = [];
+      for (const { date, slots } of dates) {
+        const start = fromIso(date);
+        const end = new Date(start);
+        end.setDate(start.getDate() + (weeks - 1) * 7);
+        for (const { time, left } of slots) {
+          blocks.push(`<div class="ws-date-block">
+            <span>${weeks > 1 ? `${DAYS[start.getDay()]}s` : DAYS[start.getDay()]}</span>
+            <p>${esc(time)}</p>
+            <p>${weeks > 1 ? `${md(start)} – ${md(end)}` : `${md(start)}, ${start.getFullYear()}`}</p>
+            ${left > 0 ? '' : '<p class="ws-date-full">Fully booked</p>'}
+          </div>`);
+        }
+      }
+      el.innerHTML = blocks.length
+        ? blocks.join('')
+        : '<p class="ws-dates-note">New dates coming soon. Email <a href="mailto:ebonyfortunatow@gmail.com">ebonyfortunatow@gmail.com</a> to register your interest.</p>';
+    });
   }
 
   function seatsLeft(iso) {
