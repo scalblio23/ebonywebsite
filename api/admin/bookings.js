@@ -44,7 +44,7 @@ module.exports = async function handler(req, res) {
     const existing = new Set();
     slugs.forEach((s, i) => (lists[i] || []).forEach(x => {
       const b = JSON.parse(x);
-      existing.add(`${s}|${b.date}|${b.time}|${String(b.name).toLowerCase()}`);
+      if (!b.movedTo) existing.add(`${s}|${b.date}|${b.time}|${String(b.name).toLowerCase()}`);
     }));
 
     const commands = [];

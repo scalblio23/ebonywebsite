@@ -59,7 +59,8 @@ module.exports = async function handler(req, res) {
       const lists = await redis(...slugs.map(s => ['LRANGE', `bookings:${s}`, -500, -1]));
       for (let i = 0; i < slugs.length; i++) {
         booked[slugs[i]] = await getBookedCounts(slugs[i]);
-        bookings[slugs[i]] = (lists[i] || []).map(x => JSON.parse(x));
+        // Students moved to another class keep a placeholder here; hide it.
+        bookings[slugs[i]] = (lists[i] || []).map(x => JSON.parse(x)).filter(b => !b.movedTo);
       }
       return res.status(200).json({ ...config, booked, bookings });
     }

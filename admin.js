@@ -17,6 +17,7 @@
   let view = 'students'; // 'students' | 'availability'
   let showPast = false;
   let search = '';
+  let movable = [];    // bookings shown on the Students view, indexed by data-move
 
   // ---------- helpers ----------
   function esc(s) {
@@ -286,6 +287,7 @@
     let sessions = sessionList().filter(s => showPast || fromIso(s.date) >= today);
     if (q) sessions = sessions.map(s => ({ ...s, people: s.people.filter(match) })).filter(s => s.people.length);
     const total = sessions.reduce((n, s) => n + s.people.length, 0);
+    movable = [];
 
     const cards = sessions.map(s => {
       const x = server.workshops[s.slug];
@@ -309,7 +311,7 @@
             <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Notes</th></tr></thead>
             <tbody>${s.people.map((p, i) => `<tr>
               <td class="adm-muted">${i + 1}</td>
-              <td><strong>${esc(p.name)}</strong></td>
+              <td><button type="button" class="adm-student" data-move="${movable.push({ ...p, slug: s.slug }) - 1}" title="Reschedule ${esc(p.name)}">${esc(p.name)}</button></td>
               <td>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}</td>
               <td>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ''}</td>
               <td class="adm-notes">${esc(p.notes || '')}</td>
@@ -335,7 +337,7 @@
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     $('adm-title').textContent = view === 'students' ? 'Students' : 'Availability';
     $('adm-subtitle').textContent = view === 'students'
-      ? 'Everyone booked into each class, soonest first.'
+      ? 'Everyone booked into each class, soonest first. Click a name to reschedule them.'
       : 'Pick a workshop, set its times and seats, then click dates on the calendar to open or close them.';
     $('adm-tabs').hidden = view !== 'availability';
   }
@@ -534,6 +536,136 @@
 
   window.addEventListener('beforeunload', e => {
     if (dirty) e.preventDefault();
+  });
+
+  // ---------- reschedule ----------
+  const move = { booking: null, done: false };
+
+  function seatsLeft(slug, iso, time) {
+    return savedSeats(slug, iso) - ((server.booked[slug] || {})[`${iso}|${time}`] || 0);
+  }
+
+  function openMove(booking) {
+    if (dirty) {
+      alert('Save or discard your availability changes before moving a student.');
+      return;
+    }
+    move.booking = booking;
+    move.done = false;
+    const f = $('adm-move-form');
+    f.workshop.innerHTML = Object.entries(server.workshops).map(([slug, x]) =>
+      `<option value="${slug}">${esc(x.name)}</option>`).join('');
+    f.workshop.value = booking.slug;
+    f.otherDate.value = '';
+    f.otherDate.min = isoDate(today);
+    $('adm-move-from').textContent = `Currently in ${booking.workshop}, ${longDate(booking.date)} · ${booking.time}`;
+    $('adm-move-name').textContent = `Reschedule ${booking.name}`;
+    $('adm-move-error').hidden = true;
+    $('adm-move-form').hidden = false;
+    $('adm-move-done').hidden = true;
+    fillDates();
+    $('adm-move').showModal();
+  }
+
+  function fillDates() {
+    const f = $('adm-move-form');
+    const x = server.workshops[f.workshop.value];
+    const dates = Object.keys(x.dates).filter(iso => fromIso(iso) >= today).sort();
+    f.date.innerHTML = '<option value="">Choose a date</option>'
+      + dates.map(iso => `<option value="${iso}">${shortDate(iso)}</option>`).join('')
+      + '<option value="other">Another date…</option>';
+    fillTimes();
+  }
+
+  function chosenDate() {
+    const f = $('adm-move-form');
+    return f.date.value === 'other' ? f.otherDate.value : f.date.value;
+  }
+
+  function fillTimes() {
+    const f = $('adm-move-form');
+    const slug = f.workshop.value;
+    const x = server.workshops[slug];
+    const iso = chosenDate();
+    $('adm-move-other').hidden = f.date.value !== 'other';
+    const open = x.dates[iso];
+    const times = open ? open.times.filter(t => x.times.includes(t)) : x.times;
+    const list = times.length ? times : x.times;
+    f.time.innerHTML = iso
+      ? '<option value="">Choose a time</option>' + list.map(t => {
+        const left = seatsLeft(slug, iso, t);
+        return `<option value="${esc(t)}">${esc(t)} · ${left > 0 ? `${left} ${left === 1 ? 'seat' : 'seats'} left` : 'Full'}</option>`;
+      }).join('')
+      : '<option value="">Choose a date first</option>';
+    f.time.disabled = !iso;
+    if (list.length === 1 && iso) f.time.value = list[0];
+    updateMoveButton();
+  }
+
+  function updateMoveButton() {
+    const f = $('adm-move-form');
+    const iso = chosenDate();
+    const ready = !!(iso && f.time.value);
+    const btn = $('adm-move-confirm');
+    btn.disabled = !ready;
+    btn.textContent = 'Confirm';
+    $('adm-move-summary').hidden = !ready;
+    if (ready) {
+      $('adm-move-summary').textContent =
+        `Move ${move.booking.name} to ${server.workshops[f.workshop.value].name}, ${longDate(iso)} · ${f.time.value}?`;
+    }
+  }
+
+  $('adm-move-form').addEventListener('change', e => {
+    const name = e.target.name;
+    if (name === 'workshop') fillDates();
+    else if (name === 'date' || name === 'otherDate') fillTimes();
+    else updateMoveButton();
+  });
+
+  $('adm-move-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (e.submitter && e.submitter.value === 'cancel') return $('adm-move').close();
+    const f = e.target;
+    const b = move.booking;
+    const to = { workshop: f.workshop.value, date: chosenDate(), time: f.time.value };
+    if (!to.date || !to.time) return;
+    if (seatsLeft(to.workshop, to.date, to.time) <= 0
+      && !confirm('That class is already full. Move them in anyway?')) return;
+    const btn = $('adm-move-confirm');
+    btn.disabled = true;
+    btn.textContent = 'Moving…';
+    $('adm-move-error').hidden = true;
+    try {
+      await api('/api/admin/reschedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          booking: { slug: b.slug, date: b.date, time: b.time, name: b.name, createdAt: b.createdAt },
+          to,
+        }),
+      });
+      const x = server.workshops[to.workshop];
+      $('adm-move-done-text').textContent =
+        `${b.name} is now booked into ${x.name} on ${longDate(to.date)} · ${to.time}.`;
+      $('adm-move-form').hidden = true;
+      $('adm-move-done').hidden = false;
+      move.done = true;
+      server = await api('/api/admin/config');
+      draft = structuredClone(server.workshops);
+      render();
+    } catch (err) {
+      if (err.status === 401) { $('adm-move').close(); return show('login'); }
+      $('adm-move-error').textContent = err.message;
+      $('adm-move-error').hidden = false;
+      updateMoveButton();
+    }
+  });
+
+  $('adm-move-close').addEventListener('click', () => $('adm-move').close());
+
+  $('adm-panel').addEventListener('click', e => {
+    const t = e.target.closest('[data-move]');
+    if (t) openMove(movable[Number(t.dataset.move)]);
   });
 
   // ---------- auth ----------

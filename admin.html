@@ -58,6 +58,31 @@
     </div>
   </div>
 
+  <dialog class="adm-dialog" id="adm-move" aria-labelledby="adm-move-name">
+    <form id="adm-move-form" novalidate>
+      <h2 id="adm-move-name">Reschedule</h2>
+      <p class="adm-muted" id="adm-move-from"></p>
+      <label>1. Class<select name="workshop"></select></label>
+      <label>2. Date<select name="date"></select></label>
+      <label id="adm-move-other" hidden>Pick the date<input type="date" name="otherDate" /></label>
+      <label>3. Time<select name="time"></select></label>
+      <p class="adm-move-summary" id="adm-move-summary" hidden></p>
+      <p class="adm-error" id="adm-move-error" role="alert" hidden></p>
+      <div class="adm-dialog-actions">
+        <button type="submit" class="btn-outline" value="cancel" formnovalidate>Cancel</button>
+        <button type="submit" class="btn-solid" id="adm-move-confirm" disabled>Confirm</button>
+      </div>
+    </form>
+    <div id="adm-move-done" hidden>
+      <h2>Done</h2>
+      <p id="adm-move-done-text"></p>
+      <p class="adm-muted">No email has been sent, so let them know about the new date.</p>
+      <div class="adm-dialog-actions">
+        <button type="button" class="btn-solid" id="adm-move-close">Close</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src="admin.js"></script>
 </body>
 </html>
