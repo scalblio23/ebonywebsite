@@ -20,13 +20,24 @@
     </nav>
   </header>
 
-  <section class="ws-hero" style="background-image: url('assets/workshop3.jpg')">
+  <section class="ws-hero" style="background-image: url('Six%20Week%20Thumbnail.jpg')">
     <div class="hero-overlay"></div>
     <div class="ws-hero-text">
       <p class="ws-hero-label">COURSE</p>
       <h1>6 Week Course</h1>
       <p class="ws-hero-meta">2.5 hours per week &nbsp;·&nbsp; Max 8 people &nbsp;·&nbsp; All levels &nbsp;·&nbsp; $550 per person</p>
+      <a href="#book" class="btn-solid ws-hero-cta">Check dates &amp; book</a>
     </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <section class="ws-highlights">
+    <ul>
+      <li>6 weekly sessions</li>
+      <li>All materials &amp; firings included</li>
+      <li>Glaze your own work</li>
+      <li>Small group &mdash; max 8</li>
+    </ul>
   </section>
 
   <section class="ws-about">
@@ -86,17 +97,36 @@
     </div>
   </section>
 
-  <section class="ws-booking">
+  <section class="ws-booking" id="book">
     <div class="ws-booking-inner">
       <div class="ws-booking-text">
+        <p class="ws-eyebrow">Reserve your place</p>
         <h2>Enrol in the Next Intake</h2>
-        <p>Select a course start date below and get in touch to secure your place. Enrolments close one week before each intake begins.</p>
-        <p class="ws-booking-note">Once you've selected a date, email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> or use the button below.</p>
-        <a href="mailto:studio@ebonyfortunatow.com?subject=Enrolment - 6 Week Course" class="btn-solid" id="book-btn">Select a date first</a>
+        <p>Choose a start date, tell us how many are enrolling and send your request. Enrolments close one week before each intake begins.</p>
+        <p class="ws-included-title">What's included</p>
+        <ul class="ws-included">
+          <li>15 hours of tuition over 6 weeks</li>
+          <li>Pinch, coil, slab, decorating &amp; glazing</li>
+          <li>All materials &amp; firings</li>
+          <li>A body of finished work</li>
+        </ul>
+        <div class="ws-booking-help">
+          <p><strong>Have a question before booking?</strong></p>
+          <p>Email <a href="mailto:studio@ebonyfortunatow.com?subject=6%20Week%20Course%20enquiry">studio@ebonyfortunatow.com</a> and we'll be in touch to help.</p>
+        </div>
       </div>
       <div class="ws-calendar" id="calendar"></div>
     </div>
   </section>
+
+  <!-- STICKY BOOKING BAR -->
+  <div class="ws-sticky-cta" id="sticky-cta">
+    <div class="ws-sticky-info">
+      <strong>6 Week Course</strong>
+      <span>$550 per person &nbsp;&middot;&nbsp; 6 weekly sessions</span>
+    </div>
+    <a href="#book" class="btn-solid">Book now</a>
+  </div>
 
   <footer class="footer">
     <div class="footer-top">
@@ -117,6 +147,6 @@
 
   <script src="main.js"></script>
   <script src="calendar.js"></script>
-  <script>initCalendar('calendar', 'book-btn', '6 Week Course');</script>
+  <script>initBooking('calendar', { name: '6 Week Course', price: 550, maxGuests: 8 });</script>
 </body>
 </html>

@@ -27,7 +27,18 @@
       <p class="ws-hero-label">WORKSHOP</p>
       <h1>Beginners Hand-building</h1>
       <p class="ws-hero-meta">2 hours &nbsp;·&nbsp; Max 10 people &nbsp;·&nbsp; All levels &nbsp;·&nbsp; $98 per person</p>
+      <a href="#book" class="btn-solid ws-hero-cta">Check dates &amp; book</a>
     </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <section class="ws-highlights">
+    <ul>
+      <li>No experience needed</li>
+      <li>All clay &amp; tools included</li>
+      <li>Firing included</li>
+      <li>Small group &mdash; max 10</li>
+    </ul>
   </section>
 
   <!-- ABOUT / WHAT TO EXPECT -->
@@ -81,17 +92,36 @@
   </section>
 
   <!-- BOOKING CALENDAR -->
-  <section class="ws-booking">
+  <section class="ws-booking" id="book">
     <div class="ws-booking-inner">
       <div class="ws-booking-text">
+        <p class="ws-eyebrow">Reserve your place</p>
         <h2>Book Your Spot</h2>
-        <p>Select an available date below and get in touch to reserve your place. Spots fill quickly.</p>
-        <p class="ws-booking-note">Once you've selected a date, email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> or use the button below.</p>
-        <a href="mailto:studio@ebonyfortunatow.com?subject=Booking - Beginners Hand-building" class="btn-solid" id="book-btn">Select a date first</a>
+        <p>Choose a date, tell us how many are coming and send your request. Small groups mean spots go quickly.</p>
+        <p class="ws-included-title">What's included</p>
+        <ul class="ws-included">
+          <li>Guided session with Ebony</li>
+          <li>Make 2&ndash;3 vessels to take home</li>
+          <li>All clay, tools &amp; firing</li>
+          <li>Pickup in 5&ndash;6 weeks</li>
+        </ul>
+        <div class="ws-booking-help">
+          <p><strong>Booking for a group, team or celebration?</strong></p>
+          <p>Email <a href="mailto:studio@ebonyfortunatow.com?subject=Beginners%20Hand-building%20enquiry">studio@ebonyfortunatow.com</a> and we'll be in touch to help.</p>
+        </div>
       </div>
       <div class="ws-calendar" id="calendar"></div>
     </div>
   </section>
+
+  <!-- STICKY BOOKING BAR -->
+  <div class="ws-sticky-cta" id="sticky-cta">
+    <div class="ws-sticky-info">
+      <strong>Beginners Hand-building</strong>
+      <span>$98 per person &nbsp;&middot;&nbsp; 2 hours</span>
+    </div>
+    <a href="#book" class="btn-solid">Book now</a>
+  </div>
 
   <footer class="footer">
     <div class="footer-top">
@@ -112,6 +142,6 @@
 
   <script src="main.js"></script>
   <script src="calendar.js"></script>
-  <script>initCalendar('calendar', 'book-btn', 'Beginners Hand-building');</script>
+  <script>initBooking('calendar', { name: 'Beginners Hand-building', price: 98, maxGuests: 10 });</script>
 </body>
 </html>

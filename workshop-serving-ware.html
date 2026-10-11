@@ -26,7 +26,18 @@
       <p class="ws-hero-label">WORKSHOP</p>
       <h1>Build Your Own Serving Ware</h1>
       <p class="ws-hero-meta">2.5 hours &nbsp;·&nbsp; Max 10 people &nbsp;·&nbsp; All levels &nbsp;·&nbsp; $180 per person</p>
+      <a href="#book" class="btn-solid ws-hero-cta">Check dates &amp; book</a>
     </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <section class="ws-highlights">
+    <ul>
+      <li>Make 1&ndash;2 serving pieces</li>
+      <li>All levels welcome</li>
+      <li>All clay &amp; tools included</li>
+      <li>Firing included</li>
+    </ul>
   </section>
 
   <section class="ws-about">
@@ -72,17 +83,36 @@
     </div>
   </section>
 
-  <section class="ws-booking">
+  <section class="ws-booking" id="book">
     <div class="ws-booking-inner">
       <div class="ws-booking-text">
+        <p class="ws-eyebrow">Reserve your place</p>
         <h2>Book Your Spot</h2>
-        <p>Select an available date below and get in touch to reserve your place. Spots fill quickly.</p>
-        <p class="ws-booking-note">Once you've selected a date, email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> or use the button below.</p>
-        <a href="mailto:studio@ebonyfortunatow.com?subject=Booking - Build Your Own Serving Ware" class="btn-solid" id="book-btn">Select a date first</a>
+        <p>Choose a date, tell us how many are coming and send your request. Small groups mean spots go quickly.</p>
+        <p class="ws-included-title">What's included</p>
+        <ul class="ws-included">
+          <li>Guided session with Ebony</li>
+          <li>1&ndash;2 platters, boards, bowls or dip dishes</li>
+          <li>All clay, tools &amp; firing</li>
+          <li>Pickup in 5&ndash;6 weeks</li>
+        </ul>
+        <div class="ws-booking-help">
+          <p><strong>Booking for a group, team or celebration?</strong></p>
+          <p>Email <a href="mailto:studio@ebonyfortunatow.com?subject=Build%20Your%20Own%20Serving%20Ware%20enquiry">studio@ebonyfortunatow.com</a> and we'll be in touch to help.</p>
+        </div>
       </div>
       <div class="ws-calendar" id="calendar"></div>
     </div>
   </section>
+
+  <!-- STICKY BOOKING BAR -->
+  <div class="ws-sticky-cta" id="sticky-cta">
+    <div class="ws-sticky-info">
+      <strong>Build Your Own Serving Ware</strong>
+      <span>$180 per person &nbsp;&middot;&nbsp; 2.5 hours</span>
+    </div>
+    <a href="#book" class="btn-solid">Book now</a>
+  </div>
 
   <footer class="footer">
     <div class="footer-top">
@@ -103,6 +133,6 @@
 
   <script src="main.js"></script>
   <script src="calendar.js"></script>
-  <script>initCalendar('calendar', 'book-btn', 'Build Your Own Serving Ware');</script>
+  <script>initBooking('calendar', { name: 'Build Your Own Serving Ware', price: 180, maxGuests: 10 });</script>
 </body>
 </html>

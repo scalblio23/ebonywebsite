@@ -50,3 +50,20 @@ function toggleSound() {
   // Auto-advance
   setInterval(() => goTo(current + 1), 4000);
 })();
+
+// Sticky booking bar: show once the hero is scrolled past, hide while the booking section is on screen
+(function () {
+  const bar = document.getElementById('sticky-cta');
+  const hero = document.querySelector('.ws-hero');
+  const booking = document.getElementById('book');
+  if (!bar || !hero || !booking || !('IntersectionObserver' in window)) return;
+
+  let heroVisible = true;
+  let bookingVisible = false;
+  function update() {
+    bar.classList.toggle('visible', !heroVisible && !bookingVisible);
+  }
+
+  new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; update(); }).observe(hero);
+  new IntersectionObserver(([e]) => { bookingVisible = e.isIntersecting; update(); }).observe(booking);
+})();

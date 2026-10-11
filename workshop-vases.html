@@ -26,7 +26,18 @@
       <p class="ws-hero-label">WORKSHOP</p>
       <h1>Vases &amp; Flower Arranging</h1>
       <p class="ws-hero-meta">4 hours &nbsp;·&nbsp; Max 10 people &nbsp;·&nbsp; All levels &nbsp;·&nbsp; $280 per person</p>
+      <a href="#book" class="btn-solid ws-hero-cta">Check dates &amp; book</a>
     </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <section class="ws-highlights">
+    <ul>
+      <li>Vase + fresh arrangement</li>
+      <li>Florist-led arranging session</li>
+      <li>Clay, tools &amp; flowers included</li>
+      <li>Coffee &amp; snacks provided</li>
+    </ul>
   </section>
 
   <section class="ws-about">
@@ -74,17 +85,36 @@
     </div>
   </section>
 
-  <section class="ws-booking">
+  <section class="ws-booking" id="book">
     <div class="ws-booking-inner">
       <div class="ws-booking-text">
+        <p class="ws-eyebrow">Reserve your place</p>
         <h2>Book Your Spot</h2>
-        <p>Select an available date below and get in touch to reserve your place. Spots fill quickly.</p>
-        <p class="ws-booking-note">Once you've selected a date, email <a href="mailto:studio@ebonyfortunatow.com">studio@ebonyfortunatow.com</a> or use the button below.</p>
-        <a href="mailto:studio@ebonyfortunatow.com?subject=Booking - Vases and Flower Arranging Workshop" class="btn-solid" id="book-btn">Select a date first</a>
+        <p>Choose a date, tell us how many are coming and send your request. Small groups mean spots go quickly.</p>
+        <p class="ws-included-title">What's included</p>
+        <ul class="ws-included">
+          <li>Hand-build a sculptural vase with Ebony</li>
+          <li>Flower arranging with florist Eliza</li>
+          <li>Take your arrangement home on the day</li>
+          <li>Vase fired &amp; ready in 5&ndash;6 weeks</li>
+        </ul>
+        <div class="ws-booking-help">
+          <p><strong>Booking for a group, team or celebration?</strong></p>
+          <p>Email <a href="mailto:studio@ebonyfortunatow.com?subject=Vases%20and%20Flower%20Arranging%20Workshop%20enquiry">studio@ebonyfortunatow.com</a> and we'll be in touch to help.</p>
+        </div>
       </div>
       <div class="ws-calendar" id="calendar"></div>
     </div>
   </section>
+
+  <!-- STICKY BOOKING BAR -->
+  <div class="ws-sticky-cta" id="sticky-cta">
+    <div class="ws-sticky-info">
+      <strong>Vases &amp; Flower Arranging</strong>
+      <span>$280 per person &nbsp;&middot;&nbsp; 4 hours</span>
+    </div>
+    <a href="#book" class="btn-solid">Book now</a>
+  </div>
 
   <footer class="footer">
     <div class="footer-top">
@@ -105,6 +135,6 @@
 
   <script src="main.js"></script>
   <script src="calendar.js"></script>
-  <script>initCalendar('calendar', 'book-btn', 'Vases and Flower Arranging Workshop');</script>
+  <script>initBooking('calendar', { name: 'Vases and Flower Arranging Workshop', price: 280, maxGuests: 10 });</script>
 </body>
 </html>
